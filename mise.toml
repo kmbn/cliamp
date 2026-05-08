@@ -1,2 +1,48 @@
 [tools]
 go = "latest"
+
+[tasks.build]
+description = "Build the cliamp binary"
+run = """
+VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+go build -trimpath -ldflags="-s -w -X main.version=$VERSION" -o cliamp .
+"""
+
+[tasks.test]
+description = "Run all tests"
+run = "go test ./..."
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "Run vet and staticcheck"
+depends = ["vet"]
+run = """
+if command -v staticcheck >/dev/null 2>&1; then
+  staticcheck ./...
+else
+  echo "staticcheck not installed — skipping (go install honnef.co/go/tools/cmd/staticcheck@latest)"
+fi
+"""
+
+[tasks.fmt]
+description = "Format Go source files"
+run = "gofmt -l -w ."
+
+[tasks.check]
+description = "Run fmt, vet, and test"
+depends = ["fmt", "vet", "test"]
+
+[tasks.clean]
+description = "Remove the built binary"
+run = "rm -f cliamp"
+
+[tasks.install]
+description = "Build and install cliamp to ~/.local/bin"
+depends = ["build"]
+run = """
+install -d $HOME/.local/bin
+install -m 755 cliamp $HOME/.local/bin/cliamp
+"""
