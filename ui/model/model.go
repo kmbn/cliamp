@@ -50,6 +50,7 @@ type topLevelScreen int
 
 const (
 	screenMain topLevelScreen = iota
+	screenStations
 	screenKeymap
 	screenThemePicker
 	screenDevicePicker
@@ -122,19 +123,19 @@ type Model struct {
 	eqCustomLabel string          // non-empty = plugin-defined preset label (shown instead of "Custom")
 
 	// Overlay / feature state (see state.go for struct definitions)
-	search       searchState
-	provSearch   provSearchState
-	seek         seekState
-	themePicker  themePickerState
-	keymap       keymapOverlay
-	catalogBatch catalogBatchState
-	reconnect    reconnectState
-	save         saveState
-	status       statusMsg
-	logLines     []logLine
-	network      networkStats
+	search         searchState
+	provSearch     provSearchState
+	seek           seekState
+	themePicker    themePickerState
+	keymap         keymapOverlay
+	catalogBatch   catalogBatchState
+	reconnect      reconnectState
+	save           saveState
+	status         statusMsg
+	logLines       []logLine
+	network        networkStats
 	speedSaveAfter time.Duration
-	termTitle    terminalTitleState
+	termTitle      terminalTitleState
 
 	// URL input mode (load playlist/stream URL at runtime)
 	urlInputting bool
@@ -192,6 +193,9 @@ type Model struct {
 	// Track info overlay (metadata details)
 	showInfo bool
 
+	// Station browser overlay (Ctrl+R / Esc)
+	stationsVisible bool
+
 	// Audio device picker overlay
 	devicePicker devicePickerState
 
@@ -211,6 +215,8 @@ type Model struct {
 
 func (m Model) activeScreen() topLevelScreen {
 	switch {
+	case m.stationsVisible:
+		return screenStations
 	case m.keymap.visible:
 		return screenKeymap
 	case m.themePicker.visible:

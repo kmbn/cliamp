@@ -20,6 +20,7 @@ func (m *Model) resetProviderNav() {
 func (m *Model) StartInProvider() {
 	if m.provider != nil {
 		m.focus = focusProvider
+		m.stationsVisible = true
 		m.resetProviderNav()
 	}
 }
@@ -37,6 +38,7 @@ func (m *Model) switchProvider(idx int) tea.Cmd {
 	m.activeProviderPlaylistID = ""
 	m.resetProviderNav()
 	m.focus = focusProvider
+	m.stationsVisible = true
 	return fetchPlaylistsCmd(m.provider)
 }
 
@@ -93,3 +95,23 @@ func (m *Model) SetPendingURLs(urls []string) {
 	m.feedLoading = len(urls) > 0
 }
 
+// openStations shows the station browser overlay. If the provider list has not
+// been loaded yet and a fetch is not already in flight, it triggers one.
+func (m *Model) openStations() tea.Cmd {
+	m.stationsVisible = true
+	m.focus = focusProvider
+	if m.provider != nil && !m.provLoading && len(m.providerLists) == 0 {
+		m.provLoading = true
+		return fetchPlaylistsCmd(m.provider)
+	}
+	return nil
+}
+
+// closeStations hides the station browser overlay and returns focus to the
+// playlist area, clearing any active provider search.
+func (m *Model) closeStations() {
+	m.stationsVisible = false
+	m.focus = focusPlaylist
+	m.provSearch.active = false
+	m.provSearch.query = ""
+}

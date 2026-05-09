@@ -56,8 +56,7 @@ func (m *Model) measurePlVisible(limit int) int {
 		m.renderTrackInfo(), m.renderTimeStatus(), "",
 		m.renderSpectrum(), m.renderSeekBar(), "",
 		m.renderControls(), m.renderProviderPill(), "",
-		m.renderPlaylistHeader(), "x", "",
-		m.renderHelp(), m.renderBottomStatus(),
+		m.renderHelp(),
 	}, "\n")
 	fixedLines := lipgloss.Height(ui.FrameStyle.Render(probe)) - 1
 	return max(3, min(limit, m.height-fixedLines))
@@ -113,7 +112,7 @@ func (m Model) playlistScroll(visible int) int {
 }
 
 func (m Model) mainFrameFixedLines(includeTransient bool) int {
-	content := strings.Join(m.mainSections("", includeTransient), "\n")
+	content := strings.Join(m.mainSections(includeTransient), "\n")
 	return lipgloss.Height(ui.FrameStyle.Render(content))
 }
 

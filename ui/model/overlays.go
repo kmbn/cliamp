@@ -64,4 +64,3 @@ func (m *Model) themePickerVisible() int {
 func (m *Model) themePickerMaybeAdjustScroll(visible int) {
 	clampScroll(&m.themePicker.cursor, &m.themePicker.scroll, len(m.themes)+1, visible)
 }
-

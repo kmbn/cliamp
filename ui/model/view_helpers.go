@@ -110,4 +110,3 @@ func fitLines(lines []string, budget int) []string {
 func helpKey(key, label string) string {
 	return helpKeyStyle.Render(" "+key+" ") + helpStyle.Render(" "+label)
 }
-

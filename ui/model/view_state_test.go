@@ -2,7 +2,6 @@ package model
 
 import (
 	"regexp"
-	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -55,37 +54,6 @@ func TestMainViewShrinksPlaylistForFooterMessages(t *testing.T) {
 	}
 }
 
-func TestRenderPlaylistShowsCurrentStation(t *testing.T) {
-	if sharedPlayer == nil {
-		t.Skip("audio hardware unavailable")
-	}
-	withFrameWidth(t, 80)
-
-	sharedPlayer.Stop()
-
-	pl := playlist.New()
-	pl.Add(playlist.Track{
-		Path:  "http://stream.example.com/radio",
-		Title: "Cool Radio",
-		Genre: "Jazz",
-	})
-
-	m := Model{
-		player:    sharedPlayer,
-		playlist:  pl,
-		vis:       ui.NewVisualizer(float64(sharedPlayer.SampleRate())),
-		width:     80,
-		focus:     focusPlaylist,
-		plVisible: 3,
-	}
-	m.vis.Mode = ui.VisNone
-	m.height = m.mainFrameFixedLines(true) + 3
-
-	out := m.renderPlaylist()
-	if !strings.Contains(out, "Cool Radio") {
-		t.Fatalf("renderPlaylist() = %q, want station name visible", out)
-	}
-}
 
 func TestViewConsumesInitialVisualizerRefresh(t *testing.T) {
 	if sharedPlayer == nil {

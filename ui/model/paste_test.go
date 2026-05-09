@@ -117,4 +117,3 @@ func TestUpdateRoutesPasteMsg(t *testing.T) {
 		t.Fatalf("keymap.search = %q, want %q", got.keymap.search, "pasted")
 	}
 }
-

@@ -122,6 +122,8 @@ func (m Model) View() tea.View {
 
 	var content string
 	switch screen {
+	case screenStations:
+		content = m.renderStationsOverlay()
 	case screenKeymap:
 		content = m.renderKeymapOverlay()
 	case screenThemePicker:
@@ -137,7 +139,7 @@ func (m Model) View() tea.View {
 	case screenFullVisualizer:
 		content = m.renderFullVisualizer()
 	default:
-		content = strings.Join(m.mainSections(m.renderPlaylist(), true), "\n")
+		content = strings.Join(m.mainSections(true), "\n")
 	}
 
 	rendered := content
@@ -167,7 +169,7 @@ func appendFooter(lines, footer []string) []string {
 	return lines
 }
 
-func (m Model) mainSections(playlist string, includeTransient bool) []string {
+func (m Model) mainSections(includeTransient bool) []string {
 	sections := []string{
 		// Now playing
 		m.renderTrackInfo(),
@@ -180,18 +182,11 @@ func (m Model) mainSections(playlist string, includeTransient bool) []string {
 		// Controls
 		m.renderControls(),
 		m.renderProviderPill(),
-		"",
-		// Playlist
-		m.renderPlaylistHeader(),
-	}
-	if playlist != "" {
-		sections = append(sections, playlist)
 	}
 	sections = append(sections,
 		"",
 		// Help
 		m.renderHelp(),
-		m.renderBottomStatus(),
 	)
 
 	if includeTransient {
@@ -316,12 +311,36 @@ func (m Model) renderTimeStatus() string {
 
 	posMin := int(pos.Minutes())
 	posSec := int(pos.Seconds()) % 60
-	durMin := int(dur.Minutes())
-	durSec := int(dur.Seconds()) % 60
-
-	timeStr := fmt.Sprintf("%02d:%02d / %02d:%02d", posMin, posSec, durMin, durSec)
 
 	track, _ := m.playlist.Current()
+
+	// For streams, replace the always-zero duration with download stats.
+	var timeStr string
+	downloaded, total := m.player.StreamBytes()
+	if track.Stream {
+		mb := float64(downloaded) / (1024 * 1024)
+		var dlStr string
+		if total > 0 {
+			totalMB := float64(total) / (1024 * 1024)
+			pct := float64(downloaded) / float64(total) * 100
+			dlStr = fmt.Sprintf("↓ %.1f/%.1f MB (%.0f%%)", mb, totalMB, pct)
+		} else {
+			dlStr = fmt.Sprintf("↓ %.1f MB", mb)
+		}
+		if m.network.speed > 0 {
+			kbs := m.network.speed / 1024
+			if kbs >= 1024 {
+				dlStr += fmt.Sprintf(" %.1f MB/s", kbs/1024)
+			} else {
+				dlStr += fmt.Sprintf(" %.0f KB/s", kbs)
+			}
+		}
+		timeStr = fmt.Sprintf("%02d:%02d / %s", posMin, posSec, dlStr)
+	} else {
+		durMin := int(dur.Minutes())
+		durSec := int(dur.Seconds()) % 60
+		timeStr = fmt.Sprintf("%02d:%02d / %02d:%02d", posMin, posSec, durMin, durSec)
+	}
 
 	var status string
 	switch {
@@ -409,29 +428,36 @@ func (m Model) renderSeekBar() string {
 }
 
 func (m Model) renderControls() string {
-	// ── EQ [Preset] (left)  ·····  VOL bar dB [Mono] (right) ──
+	// ── EQ/Station (left)  ·····  VOL bar dB [Mono] (right) ──
 
-	bands := m.player.EQBands()
-	presetName := m.EQPresetName()
-
-	eqParts := make([]string, 10)
-	eqLabels := [10]string{"70", "180", "320", "600", "1k", "3k", "6k", "12k", "14k", "16k"}
-	for i, label := range eqLabels {
-		style := eqInactiveStyle
-		if bands[i] != 0 {
-			label = fmt.Sprintf("%+.0f", bands[i])
-		}
-		if m.focus == focusEQ && i == m.eqCursor {
-			style = eqActiveStyle
-		}
-		eqParts[i] = style.Render(label)
-	}
-
-	eqLabel := labelStyle.Render("EQ ")
+	var left string
 	if m.focus == focusEQ {
-		eqLabel = activeToggle.Render("EQ ▸ ")
+		bands := m.player.EQBands()
+		presetName := m.EQPresetName()
+
+		eqParts := make([]string, 10)
+		eqLabels := [10]string{"70", "180", "320", "600", "1k", "3k", "6k", "12k", "14k", "16k"}
+		for i, label := range eqLabels {
+			style := eqInactiveStyle
+			if bands[i] != 0 {
+				label = fmt.Sprintf("%+.0f", bands[i])
+			}
+			if i == m.eqCursor {
+				style = eqActiveStyle
+			}
+			eqParts[i] = style.Render(label)
+		}
+
+		left = activeToggle.Render("EQ ▸ ") + dimStyle.Render("[") + activeToggle.Render(presetName) + dimStyle.Render("] ") + strings.Join(eqParts, " ")
+	} else {
+		track, _ := m.playlist.Current()
+		stationName := track.Title
+		if stationName == "" {
+			stationName = track.Path
+		}
+		stationLabel := labelStyle.Render("Station ")
+		left = stationLabel + dimStyle.Render("▸ ") + trackStyle.Render(truncate(stationName, ui.PanelWidth/2))
 	}
-	left := eqLabel + dimStyle.Render("[") + activeToggle.Render(presetName) + dimStyle.Render("] ") + strings.Join(eqParts, " ")
 
 	vol := m.player.Volume()
 	frac := max(0, min(1, (vol+30)/36))
@@ -502,8 +528,8 @@ func (m Model) renderPlaylistHeader() string {
 	return headerStyle.Render(headerLabel) + themeStr + " " + dimStyle.Render("──")
 }
 
-func (m Model) renderProviderList() string {
-	visibleBudget := m.effectivePlaylistVisible()
+func (m Model) renderProviderList(budget int) string {
+	visibleBudget := budget
 	if visibleBudget <= 0 {
 		return ""
 	}
@@ -623,50 +649,6 @@ func (m Model) renderProviderList() string {
 	}
 
 	return strings.Join(fitLines(lines, visibleBudget), "\n")
-}
-
-func (m Model) renderPlaylist() string {
-	budget := m.effectivePlaylistVisible()
-	if budget <= 0 {
-		return ""
-	}
-
-	if m.focus == focusProvider {
-		return m.renderProviderList()
-	}
-
-	// Station card: show the currently loaded station's details.
-	track, _ := m.playlist.Current()
-	var lines []string
-
-	if m.feedLoading {
-		lines = append(lines, loadingLine("Loading station…"))
-	} else if track.Title == "" && track.Path == "" {
-		lines = append(lines, dimStyle.Render("  No station loaded"))
-	} else {
-		name := track.DisplayName()
-		if m.streamTitle != "" {
-			name = track.DisplayName()
-		}
-		prefix := "  "
-		style := playlistItemStyle
-		if m.player.IsPlaying() {
-			prefix = "▶ "
-			style = playlistActiveStyle
-		}
-		lines = append(lines, style.Render(prefix+truncate(name, ui.PanelWidth-2)))
-		if m.streamTitle != "" {
-			lines = append(lines, dimStyle.Render("  ♪ "+truncate(m.streamTitle, ui.PanelWidth-4)))
-		}
-		if track.Genre != "" {
-			lines = append(lines, dimStyle.Render("  Genre: "+track.Genre))
-		}
-		if track.Path != "" {
-			lines = append(lines, dimStyle.Render("  "+truncate(track.Path, ui.PanelWidth-2)))
-		}
-	}
-
-	return strings.Join(fitLines(lines, budget), "\n")
 }
 
 func (m Model) renderHelp() string {

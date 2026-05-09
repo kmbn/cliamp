@@ -218,11 +218,13 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 				}
 			}
 			if len(m.providerLists) > 0 && !m.provLoading {
+				m.closeStations()
 				m.provLoading = true
 				m.activeProviderPlaylistID = m.providerLists[m.provCursor].ID
 				return fetchTracksCmd(m.provider, m.providerLists[m.provCursor].ID)
 			}
 		case "tab":
+			m.closeStations()
 			m.focus = focusEQ
 		case "esc", "backspace", "b":
 			// If viewing catalog search results, clear them first.
@@ -230,9 +232,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 				m.restoreCatalog(cs)
 				return nil
 			}
-			if m.playlist.Len() > 0 {
-				m.focus = focusPlaylist
-			}
+			m.closeStations()
 		case "/":
 			m.provSearch.active = true
 			m.provSearch.query = ""
@@ -315,8 +315,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 			m.vis.Rows = ui.DefaultVisRows
 			m.restorePanelWidth()
 		} else if m.focus == focusPlaylist {
-			// Keep current expanded/collapsed height mode when switching focus.
-			m.focus = focusProvider
+			return m.openStations()
 		}
 
 	case "space":
@@ -565,6 +564,9 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 
 	case "[":
 		m.changeSpeed(-0.25)
+
+	case "ctrl+r":
+		return m.openStations()
 
 	case "ctrl+k", "?":
 		m.openKeymap()

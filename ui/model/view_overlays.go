@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"cliamp/provider"
 	"cliamp/theme"
 	"cliamp/ui"
 )
@@ -180,6 +181,42 @@ func (m Model) renderURLInputOverlay() string {
 		"",
 		helpKey("Enter", "Load") + " " + helpKey("Esc", "Cancel"),
 	}
+	return m.centerOverlay(strings.Join(lines, "\n"))
+}
+
+// stationsHelpLine returns the help footer shown at the bottom of the stations overlay.
+func (m Model) stationsHelpLine() string {
+	help := helpKey("↓↑", "Scroll ") + helpKey("Enter", "Play ") + helpKey("/", "Search ")
+	if _, ok := m.provider.(provider.FavoriteToggler); ok {
+		help += helpKey("f", "Fav ")
+	}
+	return help + helpKey("Ctrl+R", "Refresh ") + helpKey("Esc", "Close")
+}
+
+// stationsBudget returns the number of list rows that fit inside the stations overlay,
+// accounting for the title, optional search bar, and help footer.
+func (m *Model) stationsBudget() int {
+	header := []string{titleStyle.Render("S T A T I O N S"), ""}
+	if m.provSearch.active {
+		header = append(header, playlistSelectedStyle.Render("  / "+m.provSearch.query+"_"), "")
+	}
+	probe := append(header, "x", "", m.stationsHelpLine())
+	return m.measureOverlayVisible(probe, maxPlVisible)
+}
+
+// renderStationsOverlay renders the full-screen station browser overlay.
+func (m Model) renderStationsOverlay() string {
+	budget := m.stationsBudget()
+
+	lines := []string{
+		titleStyle.Render("S T A T I O N S"),
+		"",
+	}
+
+	body := m.renderProviderList(budget)
+	lines = append(lines, strings.Split(body, "\n")...)
+	lines = append(lines, "", m.stationsHelpLine())
+
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
 
