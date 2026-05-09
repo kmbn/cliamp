@@ -82,7 +82,6 @@ type Config struct {
 	PaddingV         int                          // vertical padding for the UI frame (default 1)
 	AudioDevice      string                       // preferred audio output device name (empty = system default)
 	InitialDirectory string                       // initial directory for the file browser
-	Plugins          map[string]map[string]string // per-plugin config from [plugins.*] sections
 	LogLevel         string                       // log level: debug, info, warn, error (default "info")
 }
 
@@ -131,22 +130,9 @@ func Load() (Config, error) {
 			continue
 		}
 
-		// Section header: [plugins.lastfm], etc.
+		// Section header.
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.ToLower(line[1 : len(line)-1])
-			// Initialize plugin sub-maps for [plugins] and [plugins.*] sections.
-			if section == "plugins" || strings.HasPrefix(section, "plugins.") {
-				if cfg.Plugins == nil {
-					cfg.Plugins = make(map[string]map[string]string)
-				}
-				pluginName := strings.TrimPrefix(section, "plugins.")
-				if pluginName == "plugins" {
-					pluginName = "" // top-level [plugins] section
-				}
-				if _, ok := cfg.Plugins[pluginName]; !ok {
-					cfg.Plugins[pluginName] = make(map[string]string)
-				}
-			}
 			continue
 		}
 
@@ -157,18 +143,6 @@ func Load() (Config, error) {
 		key = strings.TrimSpace(key)
 		val = strings.TrimSpace(val)
 
-		if section == "plugins" || strings.HasPrefix(section, "plugins.") {
-			pluginName := strings.TrimPrefix(section, "plugins.")
-			if pluginName == "plugins" {
-				pluginName = "" // top-level [plugins] section
-			}
-			if cfg.Plugins != nil {
-				if m, ok := cfg.Plugins[pluginName]; ok {
-					m[key] = parseString(val)
-				}
-			}
-			continue
-		}
 		if section != "" {
 			continue // unknown section — skip
 		}

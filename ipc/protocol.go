@@ -42,14 +42,6 @@ type Response struct {
 	Items      []string   `json:"items,omitempty"`
 }
 
-// PluginDispatcher is the hook the IPC server calls to forward plugin.call and
-// plugin.commands requests to the Lua plugin manager. Optional — if nil, those
-// subcommands return an error.
-type PluginDispatcher interface {
-	EmitCommand(plugin, command string, args []string) (string, error)
-	CommandList() []string
-}
-
 // TrackInfo is the track metadata in a status response.
 type TrackInfo struct {
 	Title  string `json:"title,omitempty"`

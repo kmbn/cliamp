@@ -70,9 +70,7 @@ var keymapEntries = []keymapEntry{
 }
 
 // coreReservedKeys is the set of keys owned by cliamp's global UI handler.
-// Plugins are refused registration for any key in this set. Kept as a plain
-// slice so it's obvious at a glance which strings belong here; every entry
-// is in Bubbletea's `msg.String()` form (lowercase, ctrl+ prefix, etc.).
+// Every entry is in Bubbletea's `msg.String()` form (lowercase, ctrl+ prefix, etc.).
 //
 // This must be kept in sync with handleKey() in keys.go. If you add or remove
 // a case there, update this list — the TestReservedKeys test in keymap_test.go
@@ -106,38 +104,10 @@ var coreReservedKeys = []string{
 	"ctrl+r",
 }
 
-// ReservedKeys returns a fresh copy of the core-reserved key set. Handed to
-// the Lua plugin manager at startup so it can reject conflicting plugin binds.
-func ReservedKeys() map[string]bool {
-	out := make(map[string]bool, len(coreReservedKeys))
-	for _, k := range coreReservedKeys {
-		out[k] = true
-	}
-	return out
-}
-
-// buildKeymapEntries returns the core keybindings plus any plugin-registered
-// binds that supplied a description. Plugins appear under a divider row.
-// Only called when the overlay is opened; the result is cached on keymap.entries
-// so navigation (which calls keymapCount many times per frame) is allocation-free.
+// buildKeymapEntries returns the core keybindings.
 func (m Model) buildKeymapEntries() []keymapEntry {
-	out := make([]keymapEntry, 0, len(keymapEntries)+4)
+	out := make([]keymapEntry, 0, len(keymapEntries))
 	out = append(out, keymapEntries...)
-	if m.luaMgr == nil {
-		return out
-	}
-	binds := m.luaMgr.KeyBindings()
-	if len(binds) == 0 {
-		return out
-	}
-	out = append(out, keymapEntry{action: "— plugins —", divider: true})
-	for _, b := range binds {
-		label := b.Description
-		if b.Plugin != "" {
-			label += "  (" + b.Plugin + ")"
-		}
-		out = append(out, keymapEntry{key: b.Key, action: label})
-	}
 	return out
 }
 

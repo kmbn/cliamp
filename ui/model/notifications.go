@@ -5,43 +5,18 @@ import (
 	"time"
 
 	"cliamp/internal/playback"
-	"cliamp/luaplugin"
 	"cliamp/playlist"
 	"cliamp/provider"
 )
 
-// notifyAll sends the current playback state to both OS media controls and Lua plugins.
+// notifyAll sends the current playback state to OS media controls.
 func (m *Model) notifyAll() {
 	m.notifyPlayback()
-	m.notifyPlugins()
 }
 
 func (m *Model) attachNotifier(notifier playback.Notifier) {
 	m.notifier = notifier
 	m.notifyAll()
-}
-
-// notifyPlugins emits a playback state event to Lua plugins.
-func (m *Model) notifyPlugins() {
-	if m.luaMgr == nil || !m.luaMgr.HasHooks() {
-		return
-	}
-	track, _ := m.playlist.Current()
-	artist, title := m.resolveTrackDisplay(track)
-	status := "stopped"
-	if m.player.IsPlaying() {
-		if m.player.IsPaused() {
-			status = "paused"
-		} else {
-			status = "playing"
-		}
-	}
-	data := trackToMap(track)
-	data["status"] = status
-	data["title"] = title
-	data["artist"] = artist
-	data["position"] = m.player.Position().Seconds()
-	m.luaMgr.Emit(luaplugin.EventPlaybackState, data)
 }
 
 // resolveTrackDisplay returns the display artist and title, applying ICY
@@ -56,20 +31,6 @@ func (m *Model) resolveTrackDisplay(track playlist.Track) (artist, title string)
 		}
 	}
 	return
-}
-
-// trackToMap builds a metadata map from a track for Lua plugin events.
-func trackToMap(track playlist.Track) map[string]any {
-	return map[string]any{
-		"title":    track.Title,
-		"artist":   track.Artist,
-		"album":    track.Album,
-		"genre":    track.Genre,
-		"year":     track.Year,
-		"path":     track.Path,
-		"duration": track.DurationSecs,
-		"stream":   track.Stream,
-	}
 }
 
 func (m *Model) notifyPlayback() {
@@ -105,10 +66,6 @@ func (m *Model) notifyPlayback() {
 
 // nowPlaying fires a now-playing notification for the given track if configured.
 func (m *Model) nowPlaying(track playlist.Track) {
-	if m.luaMgr != nil && m.luaMgr.HasHooks() {
-		m.luaMgr.Emit(luaplugin.EventTrackChange, trackToMap(track))
-	}
-
 	reporter := m.findPlaybackReporter(track)
 	if reporter == nil {
 		return
@@ -131,13 +88,6 @@ func (m *Model) maybeScrobble(track playlist.Track, elapsed, duration time.Durat
 		dur = time.Duration(track.DurationSecs) * time.Second
 	}
 	pastThreshold := dur > 0 && elapsed >= dur/2
-
-	// Emit scrobble event to Lua plugins for all tracks (not just Navidrome).
-	if m.luaMgr != nil && m.luaMgr.HasHooks() && pastThreshold {
-		data := trackToMap(track)
-		data["played_secs"] = elapsed.Seconds()
-		m.luaMgr.Emit(luaplugin.EventTrackScrobble, data)
-	}
 
 	// Record into local history regardless of provider. Live streams without
 	// duration are filtered by pastThreshold. The write is synchronous so

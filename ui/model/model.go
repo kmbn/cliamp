@@ -6,7 +6,6 @@ import (
 
 	"cliamp/history"
 	"cliamp/internal/playback"
-	"cliamp/luaplugin"
 	"cliamp/player"
 	"cliamp/playlist"
 	"cliamp/theme"
@@ -176,9 +175,6 @@ type Model struct {
 	streamTitle string
 
 	notifier playback.Notifier
-
-	// Lua plugin manager (nil if no plugins loaded)
-	luaMgr *luaplugin.Manager
 
 	// History recorder (nil if config dir unavailable; safe to call when nil)
 	historyStore *history.Store

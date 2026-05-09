@@ -7,7 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"cliamp/history"
-	"cliamp/luaplugin"
 	"cliamp/player"
 	"cliamp/playlist"
 	"cliamp/theme"
@@ -24,7 +23,7 @@ func applyThemeAll(t theme.Theme) {
 // providers is the ordered list of available providers (Radio, Navidrome, Spotify, Jellyfin, etc.).
 // defaultProvider is the config key of the provider to select initially.
 // localProv is an optional direct reference to the local provider for write ops.
-func New(p player.Engine, pl *playlist.Playlist, providers []ProviderEntry, defaultProvider string, localProv playlist.Provider, themes []theme.Theme, luaMgr *luaplugin.Manager, cs ConfigSaver) Model {
+func New(p player.Engine, pl *playlist.Playlist, providers []ProviderEntry, defaultProvider string, localProv playlist.Provider, themes []theme.Theme, cs ConfigSaver) Model {
 	m := Model{
 		player:        p,
 		playlist:      pl,
@@ -36,7 +35,6 @@ func New(p player.Engine, pl *playlist.Playlist, providers []ProviderEntry, defa
 		themes:        themes,
 		themeIdx:      -1, // Default (ANSI)
 		providers:     providers,
-		luaMgr:        luaMgr,
 		historyStore:  history.New(),
 	}
 	m.termTitle = initialTerminalTitleState()
@@ -128,11 +126,6 @@ func (m *Model) VisualizerName() string {
 	return m.vis.ModeName()
 }
 
-// RegisterLuaVisualizers adds Lua visualizer plugins to the visualizer cycle.
-func (m *Model) RegisterLuaVisualizers(names []string, renderer ui.LuaVisRenderer) {
-	m.vis.RegisterLuaVisualizers(names, renderer)
-}
-
 // SetResume registers a path+position to seek to when that track first plays.
 func (m *Model) SetResume(path string, secs int) {
 	m.resume.path = path
@@ -161,9 +154,6 @@ func (m Model) ThemeName() string {
 
 // Init starts the tick timer and requests the terminal size.
 func (m Model) Init() tea.Cmd {
-	if m.luaMgr != nil {
-		m.luaMgr.Emit(luaplugin.EventAppStart, nil)
-	}
 	cmds := []tea.Cmd{tickCmd(), func() tea.Msg { return tea.RequestWindowSize() }}
 	if m.provider != nil {
 		cmds = append(cmds, fetchPlaylistsCmd(m.provider))

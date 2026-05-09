@@ -39,7 +39,10 @@ func TestReservedKeysCoversHandleKey(t *testing.T) {
 
 	caseRe := regexp.MustCompile(`case ("[^"]+"(?:, "[^"]+")*):`)
 	tokenRe := regexp.MustCompile(`"([^"]+)"`)
-	reserved := ReservedKeys()
+	reserved := make(map[string]bool, len(coreReservedKeys))
+	for _, k := range coreReservedKeys {
+		reserved[k] = true
+	}
 
 	var missing []string
 	for _, m := range caseRe.FindAllStringSubmatch(body, -1) {

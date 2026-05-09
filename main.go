@@ -14,10 +14,8 @@ import (
 	"cliamp/external/radio"
 	"cliamp/internal/appdir"
 	"cliamp/internal/appmeta"
-	"cliamp/internal/playback"
 	"cliamp/internal/resume"
 	"cliamp/ipc"
-	"cliamp/luaplugin"
 	"cliamp/mediactl"
 	"cliamp/player"
 	"cliamp/playlist"
@@ -101,53 +99,7 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 
 	themes := theme.LoadAll()
 
-	luaMgr, luaErr := luaplugin.New(cfg.Plugins)
-	if luaErr != nil {
-		fmt.Fprintf(os.Stderr, "lua plugins: %v\n", luaErr)
-	}
-	if luaMgr != nil {
-		defer luaMgr.Close()
-		luaMgr.SetReservedKeys(model.ReservedKeys())
-	}
-
-	m := model.New(p, pl, providers, "radio", nil, themes, luaMgr, config.SaveFunc{})
-
-	if luaMgr != nil {
-		luaMgr.SetStateProvider(luaplugin.StateProvider{
-			PlayerState: func() string {
-				if !p.IsPlaying() {
-					return "stopped"
-				}
-				if p.IsPaused() {
-					return "paused"
-				}
-				return "playing"
-			},
-			Position:      func() float64 { return p.Position().Seconds() },
-			Duration:      func() float64 { return p.Duration().Seconds() },
-			Volume:        func() float64 { return p.Volume() },
-			Speed:         func() float64 { return p.Speed() },
-			Mono:          func() bool { return p.Mono() },
-			EQBands:       func() [10]float64 { return p.EQBands() },
-			TrackTitle:    func() string { t, _ := pl.Current(); return t.Title },
-			TrackArtist:   func() string { t, _ := pl.Current(); return t.Artist },
-			TrackAlbum:    func() string { t, _ := pl.Current(); return t.Album },
-			TrackGenre:    func() string { t, _ := pl.Current(); return t.Genre },
-			TrackYear:     func() int { t, _ := pl.Current(); return t.Year },
-			TrackNumber:   func() int { t, _ := pl.Current(); return t.TrackNumber },
-			TrackPath:     func() string { t, _ := pl.Current(); return t.Path },
-			TrackIsStream: func() bool { t, _ := pl.Current(); return t.Stream },
-			TrackDuration: func() int { t, _ := pl.Current(); return t.DurationSecs },
-			PlaylistCount: func() int { return pl.Len() },
-			CurrentIndex:  func() int { return pl.Index() },
-		})
-	}
-
-	if luaMgr != nil {
-		if names := luaMgr.Visualizers(); len(names) > 0 {
-			m.RegisterLuaVisualizers(names, luaMgr.RenderVis)
-		}
-	}
+	m := model.New(p, pl, providers, "radio", nil, themes, config.SaveFunc{})
 
 	m.SetSeekStepLarge(cfg.SeekStepLargeDuration())
 	m.SetInitialDirectory(cfg.InitialDirectory)
@@ -184,38 +136,11 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 		defer svc.Close()
 	}
 
-	if luaMgr != nil {
-		luaMgr.SetControlProvider(luaplugin.ControlProvider{
-			SetVolume:   func(db float64) { p.SetVolume(db) },
-			SetSpeed:    func(ratio float64) { p.SetSpeed(ratio) },
-			SetEQBand:   func(band int, db float64) { p.SetEQBand(band, db) },
-			ToggleMono:  func() { p.ToggleMono() },
-			TogglePause: func() { p.TogglePause() },
-			Stop:        func() { p.Stop() },
-			Seek: func(secs float64) {
-				_ = p.Seek(time.Duration(secs * float64(time.Second)))
-			},
-			SetEQPreset: func(name string, bands *[10]float64) {
-				prog.Send(model.SetEQPresetMsg{Name: name, Bands: bands})
-			},
-			Next: func() { prog.Send(playback.NextMsg{}) },
-			Prev: func() { prog.Send(playback.PrevMsg{}) },
-		})
-		luaMgr.SetUIProvider(luaplugin.UIProvider{
-			ShowMessage: func(text string, duration time.Duration) {
-				prog.Send(model.ShowStatusMsg{Text: text, Duration: duration})
-			},
-		})
-	}
-
 	ipcSrv, ipcErr := ipc.NewServer(ipc.DefaultSocketPath(), ipc.DispatcherFunc(func(msg any) { prog.Send(msg) }))
 	if ipcErr != nil {
 		fmt.Fprintf(os.Stderr, "ipc: %v\n", ipcErr)
 	} else {
 		defer ipcSrv.Close()
-		if luaMgr != nil {
-			ipcSrv.SetPluginDispatcher(luaMgr)
-		}
 	}
 
 	finalModel, err := mediactl.Run(prog, svc)

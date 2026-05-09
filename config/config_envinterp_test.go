@@ -1,8 +1,6 @@
 package config
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -38,31 +36,5 @@ func TestParseStringEnvInterpolation(t *testing.T) {
 				t.Fatalf("parseString(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
-	}
-}
-
-func TestLoadInterpolatesPluginSecrets(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("CLIAMP_TEST_LASTFM_KEY", "lastfm-abc")
-
-	path := filepath.Join(os.Getenv("HOME"), ".config", "cliamp", "config.toml")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	data := []byte(`
-[plugins.lastfm]
-api_key = "${CLIAMP_TEST_LASTFM_KEY}"
-`)
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
-
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	got := cfg.Plugins["lastfm"]["api_key"]
-	if got != "lastfm-abc" {
-		t.Errorf("plugins.lastfm.api_key = %q, want %q", got, "lastfm-abc")
 	}
 }
