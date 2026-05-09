@@ -170,7 +170,6 @@ func appendFooter(lines, footer []string) []string {
 func (m Model) mainSections(playlist string, includeTransient bool) []string {
 	sections := []string{
 		// Now playing
-		m.renderTitle(),
 		m.renderTrackInfo(),
 		m.renderTimeStatus(),
 		"",

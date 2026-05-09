@@ -53,7 +53,7 @@ func (m *Model) measurePlVisible(limit int) int {
 	m.plVisible = 3 // temporary minimal value for measurement
 	defer func() { m.plVisible = saved }()
 	probe := strings.Join([]string{
-		m.renderTitle(), m.renderTrackInfo(), m.renderTimeStatus(), "",
+		m.renderTrackInfo(), m.renderTimeStatus(), "",
 		m.renderSpectrum(), m.renderSeekBar(), "",
 		m.renderControls(), m.renderProviderPill(), "",
 		m.renderPlaylistHeader(), "x", "",
