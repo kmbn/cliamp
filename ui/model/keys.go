@@ -234,30 +234,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 
-	// Lyrics overlay
-	if m.lyrics.visible {
-		switch msg.String() {
-		case "ctrl+c":
-			return m.quit()
-		case "esc", "y":
-			m.lyrics.visible = false
-		case "up", "k":
-			if !(m.lyricsSyncable() && m.lyricsHaveTimestamps()) && m.lyrics.scroll > 0 {
-				m.lyrics.scroll--
-			}
-		case "down", "j":
-			if !(m.lyricsSyncable() && m.lyricsHaveTimestamps()) {
-				maxScroll := max(len(m.lyrics.lines)-1, 0)
-				if m.lyrics.scroll < maxScroll {
-					m.lyrics.scroll++
-				}
-			}
-		case "ctrl+x":
-			m.toggleExpandedView()
-		}
-		return nil
-	}
-
 	if m.jumping {
 		return m.handleJumpKey(msg)
 	}
@@ -689,22 +665,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 
 	case "i":
 		m.showInfo = true
-
-	case "y":
-		m.lyrics.visible = !m.lyrics.visible
-		if m.lyrics.visible && !m.lyrics.loading {
-			artist, title := m.lyricsArtistTitle()
-			if artist != "" && title != "" {
-				q := artist + "\n" + title
-				if q != m.lyrics.query {
-					m.lyrics.query = q
-					m.lyrics.loading = true
-					m.lyrics.lines = nil
-					m.lyrics.err = nil
-					return fetchLyricsCmd(artist, title)
-				}
-			}
-		}
 
 	case "o":
 		m.openFileBrowser()

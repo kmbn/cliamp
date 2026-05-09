@@ -137,5 +137,3 @@ func stripMirrorSuffix(s string) string {
 	}
 	return s
 }
-
-

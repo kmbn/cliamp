@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"cliamp/applog"
-	"cliamp/lyrics"
 	"cliamp/player"
 	"cliamp/playlist"
 	"cliamp/provider"
@@ -67,16 +66,6 @@ type themePickerState struct {
 	cursor   int
 	scroll   int
 	savedIdx int // themeIdx before opening picker, for cancel/restore
-}
-
-// lyricsState holds state for the lyrics display overlay.
-type lyricsState struct {
-	visible bool
-	lines   []lyrics.Line
-	loading bool
-	err     error
-	query   string // "artist\ntitle" of the last fetch
-	scroll  int
 }
 
 // keymapOverlay holds state for the keybindings overlay.

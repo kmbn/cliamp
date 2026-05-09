@@ -1,11 +1,9 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"cliamp/lyrics"
 	"cliamp/theme"
 	"cliamp/ui"
 )
@@ -491,87 +489,6 @@ func (m Model) renderURLInputOverlay() string {
 		playlistSelectedStyle.Render("  URL: " + m.urlInput + "_"),
 		"",
 		helpKey("Enter", "Load") + " " + helpKey("Esc", "Cancel"),
-	}
-	return m.centerOverlay(strings.Join(lines, "\n"))
-}
-
-func (m Model) renderLyricsOverlay() string {
-	visible := m.lyricsVisibleHeight()
-	lines := []string{
-		titleStyle.Render("L Y R I C S"),
-		"",
-	}
-
-	if m.lyrics.loading {
-		lines = append(lines, dimStyle.Render("  Searching for lyrics..."))
-	} else if m.lyrics.err != nil {
-		if errors.Is(m.lyrics.err, lyrics.ErrNotFound) {
-			lines = append(lines, dimStyle.Render("  No lyrics found for this track."))
-		} else {
-			lines = append(lines, helpStyle.Render("  Lyrics fetch failed: "+m.lyrics.err.Error()))
-		}
-	} else if len(m.lyrics.lines) == 0 {
-		artist, title := m.lyricsArtistTitle()
-		if artist == "" && title == "" {
-			lines = append(lines, dimStyle.Render("  No artist/title metadata available."))
-			track, idx := m.playlist.Current()
-			if idx >= 0 && track.Stream {
-				lines = append(lines, dimStyle.Render("  Waiting for stream metadata..."))
-			}
-		} else {
-			lines = append(lines, dimStyle.Render("  No lyrics loaded. Press y to retry."))
-		}
-	} else if m.lyricsSyncable() && m.lyricsHaveTimestamps() {
-		// Synced mode: auto-scroll to follow playback position.
-		pos := m.player.Position()
-		activeIdx := -1
-		for i, line := range m.lyrics.lines {
-			if line.Start <= pos {
-				activeIdx = i
-			} else {
-				break
-			}
-		}
-
-		half := visible / 2
-		startIdx := max(activeIdx-half, 0)
-		endIdx := startIdx + visible
-		if endIdx > len(m.lyrics.lines) {
-			endIdx = len(m.lyrics.lines)
-			startIdx = max(endIdx-visible, 0)
-		}
-
-		for i := startIdx; i < endIdx; i++ {
-			text := m.lyrics.lines[i].Text
-			if text == "" {
-				text = "♪"
-			}
-			if i == activeIdx {
-				lines = append(lines, playlistSelectedStyle.Render("  "+text))
-			} else {
-				lines = append(lines, dimStyle.Render("  "+text))
-			}
-		}
-	} else {
-		// Scroll mode: manual navigation with j/k or arrow keys.
-		endIdx := min(m.lyrics.scroll+visible, len(m.lyrics.lines))
-
-		for i := m.lyrics.scroll; i < endIdx; i++ {
-			text := m.lyrics.lines[i].Text
-			if text == "" {
-				text = "♪"
-			}
-			lines = append(lines, dimStyle.Render("  "+text))
-		}
-	}
-
-	rendered := len(lines) - 2 // -2 for header and spacing
-	lines = padLines(lines, visible, rendered)
-
-	if m.lyricsSyncable() && m.lyricsHaveTimestamps() {
-		lines = append(lines, "", helpKey("Esc", "Close"))
-	} else {
-		lines = append(lines, "", helpKey("↓↑", "Scroll")+" "+helpKey("Esc", "Close"))
 	}
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }

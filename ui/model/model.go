@@ -68,7 +68,6 @@ const (
 	screenSearch
 	screenNetSearch
 	screenURLInput
-	screenLyrics
 	screenJump
 	screenFullVisualizer
 )
@@ -173,7 +172,6 @@ type Model struct {
 	provSearch     provSearchState
 	seek           seekState
 	themePicker    themePickerState
-	lyrics         lyricsState
 	keymap         keymapOverlay
 	queue          queueOverlay
 	plManager      plManagerState
@@ -296,8 +294,6 @@ func (m Model) activeScreen() topLevelScreen {
 		return screenNetSearch
 	case m.urlInputting:
 		return screenURLInput
-	case m.lyrics.visible:
-		return screenLyrics
 	case m.jumping:
 		return screenJump
 	case m.fullVis:

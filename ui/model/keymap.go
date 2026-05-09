@@ -63,7 +63,6 @@ var keymapEntries = []keymapEntry{
 	{key: "Ctrl+F", action: "Search (active provider or YouTube)"},
 	{key: "u", action: "Load URL (stream/playlist)"},
 	{key: "d", action: "Audio device picker"},
-	{key: "y", action: "Show lyrics"},
 	{key: "Tab", action: "Toggle focus"},
 	{key: "Esc", action: "Back to provider"},
 	{key: "? Ctrl+K", action: "This keymap"},

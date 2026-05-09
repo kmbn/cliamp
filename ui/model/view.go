@@ -147,8 +147,6 @@ func (m Model) View() tea.View {
 		content = m.renderNetSearchOverlay()
 	case screenURLInput:
 		content = m.renderURLInputOverlay()
-	case screenLyrics:
-		content = m.renderLyricsOverlay()
 	case screenJump:
 		content = m.renderJumpOverlay()
 	case screenFullVisualizer:

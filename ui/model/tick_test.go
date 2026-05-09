@@ -116,35 +116,6 @@ func TestRefreshVisualizerIfPendingConsumesOneShotRequest(t *testing.T) {
 	}
 }
 
-func TestLyricsScreenHidesVisualizerTicks(t *testing.T) {
-	m := Model{
-		vis: ui.NewVisualizer(44100),
-		lyrics: lyricsState{
-			visible: true,
-		},
-	}
-
-	if got := m.activeScreen(); got != screenLyrics {
-		t.Fatalf("activeScreen() = %v, want %v", got, screenLyrics)
-	}
-	if !m.isOverlayActive() {
-		t.Fatal("isOverlayActive() = false, want true while lyrics screen is visible")
-	}
-	if !m.visualizerTickContext(time.Now()).OverlayActive {
-		t.Fatal("visualizerTickContext(...).OverlayActive = false, want true for lyrics screen")
-	}
-
-	m.vis.RequestRefresh()
-	m.refreshVisualizerIfPending()
-
-	if !m.vis.RefreshPending() {
-		t.Fatal("refreshPending = false after lyrics-screen refresh attempt, want true")
-	}
-	if m.vis.Frame() != 0 {
-		t.Fatalf("frame after lyrics-screen refresh attempt = %d, want 0", m.vis.Frame())
-	}
-}
-
 func TestUpdateRequestsVisualizerRefreshWhenOverlayCloses(t *testing.T) {
 	m := Model{
 		vis: ui.NewVisualizer(44100),
@@ -167,31 +138,6 @@ func TestUpdateRequestsVisualizerRefreshWhenOverlayCloses(t *testing.T) {
 	}
 	if !next.vis.RefreshPending() {
 		t.Fatal("refreshPending = false after overlay close, want true")
-	}
-}
-
-func TestUpdateRequestsVisualizerRefreshWhenLyricsClose(t *testing.T) {
-	m := Model{
-		vis: ui.NewVisualizer(44100),
-		lyrics: lyricsState{
-			visible: true,
-		},
-	}
-
-	nextModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if cmd != nil {
-		t.Fatalf("Update() cmd = %v, want nil", cmd)
-	}
-
-	next, ok := nextModel.(Model)
-	if !ok {
-		t.Fatalf("Update() model = %T, want Model", nextModel)
-	}
-	if next.lyrics.visible {
-		t.Fatal("lyrics overlay remained visible after escape")
-	}
-	if !next.vis.RefreshPending() {
-		t.Fatal("refreshPending = false after lyrics close, want true")
 	}
 }
 

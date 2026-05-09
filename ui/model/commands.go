@@ -7,7 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"cliamp/internal/playback"
-	"cliamp/lyrics"
 	"cliamp/player"
 	"cliamp/playlist"
 	"cliamp/provider"
@@ -56,12 +55,6 @@ type feedsLoadedMsg struct {
 // feedTrackResolvedMsg carries episodes resolved from a feed track in the playlist.
 type feedTrackResolvedMsg struct {
 	tracks []playlist.Track
-}
-
-// lyricsLoadedMsg carries parsed LRC output.
-type lyricsLoadedMsg struct {
-	lines []lyrics.Line
-	err   error
 }
 
 // netSearchResultsMsg carries the result set of a yt-dlp/sc-dlp search query
@@ -151,13 +144,6 @@ func resolveRemoteCmd(urls []string, autoPlay bool) tea.Cmd {
 			return err
 		}
 		return feedsLoadedMsg{tracks: tracks, urls: urls, autoPlay: autoPlay}
-	}
-}
-
-func fetchLyricsCmd(artist, title string) tea.Cmd {
-	return func() tea.Msg {
-		lines, err := lyrics.Fetch(artist, title)
-		return lyricsLoadedMsg{lines: lines, err: err}
 	}
 }
 

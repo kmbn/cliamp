@@ -179,31 +179,17 @@ func (m *Model) playTrack(track playlist.Track) tea.Cmd {
 	m.reconnect.attempts = 0
 	m.reconnect.at = time.Time{}
 	m.streamTitle = ""
-	m.lyrics.lines = nil
-	m.lyrics.err = nil
-	m.lyrics.query = ""
-	m.lyrics.scroll = 0
 	m.seek.active = false
 	m.seek.timer = 0
 	m.seek.timerFor = 0
 	m.seek.grace = 0
 	m.seek.graceFor = 0
-	var fetchCmd tea.Cmd
-	if m.lyrics.visible && track.Artist != "" && track.Title != "" {
-		m.lyrics.loading = true
-		m.lyrics.query = track.Artist + "\n" + track.Title
-		fetchCmd = fetchLyricsCmd(track.Artist, track.Title)
-	}
-
 	// Stream yt-dlp URLs (YouTube, SoundCloud, Bandcamp, etc.) via pipe chain.
 	if playlist.IsYTDL(track.Path) {
 		m.buffering = true
 		m.bufferingAt = time.Now()
 		m.err = nil
 		dur := time.Duration(track.DurationSecs) * time.Second
-		if fetchCmd != nil {
-			return tea.Batch(playYTDLStreamCmd(m.player, track.Path, dur), fetchCmd)
-		}
 		return playYTDLStreamCmd(m.player, track.Path, dur)
 	}
 	// Fire now-playing notification for Navidrome tracks.
@@ -213,7 +199,7 @@ func (m *Model) playTrack(track playlist.Track) tea.Cmd {
 		m.buffering = true
 		m.bufferingAt = time.Now()
 		m.err = nil
-		return tea.Batch(playStreamCmd(m.player, track.Path, dur), fetchCmd)
+		return playStreamCmd(m.player, track.Path, dur)
 	}
 	if err := m.player.Play(track.Path, dur); err != nil {
 		// Provider session went stale (e.g. Spotify auth expired and
@@ -230,9 +216,6 @@ func (m *Model) playTrack(track playlist.Track) tea.Cmd {
 		m.applyResume()
 	}
 
-	if fetchCmd != nil {
-		return tea.Batch(m.preloadNext(), fetchCmd)
-	}
 	return m.preloadNext()
 }
 

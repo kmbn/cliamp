@@ -158,27 +158,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.reconnect.at = time.Time{}
 			}
 		}
-		var lyricCmd tea.Cmd
 		// Poll ICY stream title for live radio display.
 		if title := m.player.StreamTitle(); title != "" && title != m.streamTitle {
 			m.streamTitle = title
 			m.applyHeightMode()
 			m.adjustScroll()
 			m.notifyAll()
-			// Auto-fetch lyrics when the stream song changes and lyrics overlay is open.
-			if m.lyrics.visible && !m.lyrics.loading {
-				if artist, song, ok := strings.Cut(title, " - "); ok {
-					q := artist + "\n" + song
-					if q != m.lyrics.query {
-						m.lyrics.query = q
-						m.lyrics.loading = true
-						m.lyrics.lines = nil
-						m.lyrics.err = nil
-						m.lyrics.scroll = 0
-						lyricCmd = fetchLyricsCmd(artist, song)
-					}
-				}
-			}
+
 		}
 		m.network.sampleFor += dt
 		if m.network.sampleFor >= time.Second {
@@ -210,9 +196,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmds []tea.Cmd
 		if seekCmd != nil {
 			cmds = append(cmds, seekCmd)
-		}
-		if lyricCmd != nil {
-			cmds = append(cmds, lyricCmd)
 		}
 		// Check gapless transition (audio already playing next track)
 		if m.player.GaplessAdvanced() {
@@ -430,15 +413,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.netSearch.screen = netSearchResults
 		if len(msg.tracks) == 0 {
 			m.netSearch.err = "No results found"
-		}
-		return m, nil
-
-	case lyricsLoadedMsg:
-		m.lyrics.loading = false
-		m.lyrics.err = msg.err
-		m.lyrics.scroll = 0
-		if msg.err == nil {
-			m.lyrics.lines = msg.lines
 		}
 		return m, nil
 
