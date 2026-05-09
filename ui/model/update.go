@@ -73,9 +73,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focus == focusProvider {
 			m.providerMaybeAdjustScroll()
 		}
-		if m.fileBrowser.visible {
-			m.fbMaybeAdjustScroll(m.fbVisible())
-		}
 		if m.keymap.visible {
 			m.keymapMaybeAdjustScroll(m.keymapVisible())
 		}
@@ -282,7 +279,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.ClearPreload()
 		}
 		m.playlist.Replace(msg)
-		m.setInitialHeaderState(msg)
 		m.plCursor = 0
 		m.plScroll = 0
 		m.focus = focusPlaylist
@@ -294,44 +290,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.notifyAll()
 			return m, cmd
 		}
-		return m, nil
-
-	case navArtistsLoadedMsg:
-		m.navBrowser.artists = []provider.ArtistInfo(msg)
-		m.navBrowser.loading = false
-		m.navBrowser.cursor = 0
-		m.navBrowser.scroll = 0
-		return m, nil
-
-	case navAlbumsLoadedMsg:
-		if msg.offset == 0 {
-			// Fresh load (new sort or drill-in): replace the list.
-			m.navBrowser.albums = msg.albums
-			m.navBrowser.albumDone = false
-		} else {
-			// Lazy-load page: append.
-			m.navBrowser.albums = append(m.navBrowser.albums, msg.albums...)
-		}
-		if msg.isLast {
-			m.navBrowser.albumDone = true
-		}
-		m.navBrowser.albumLoading = false
-		if msg.offset == 0 {
-			m.navBrowser.cursor = 0
-			m.navBrowser.scroll = 0
-		}
-		// If we just loaded the first page and it was a full menu → list transition,
-		// also clear the general loading flag.
-		m.navBrowser.loading = false
-		return m, nil
-
-	case navTracksLoadedMsg:
-		m.navBrowser.tracks = []playlist.Track(msg)
-		m.setInitialHeaderState(m.navBrowser.tracks)
-		m.navBrowser.loading = false
-		m.navBrowser.cursor = 0
-		m.navBrowser.scroll = 0
-		m.navBrowser.screen = navBrowseScreenTracks
 		return m, nil
 
 	case catalogBatchMsg:
@@ -377,7 +335,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.playlist.Replace(msg.tracks)
-		m.setInitialHeaderState(msg.tracks)
 		m.plCursor = 0
 		m.plScroll = 0
 		m.applyHeightMode()
@@ -399,49 +356,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			playCmd := m.playCurrentTrack()
 			m.notifyAll()
 			return m, playCmd
-		}
-		return m, nil
-
-	case netSearchResultsMsg:
-		m.netSearch.loading = false
-		if msg.err != nil {
-			m.netSearch.err = msg.err.Error()
-			return m, nil
-		}
-		m.netSearch.results = msg.tracks
-		m.netSearch.cursor = 0
-		m.netSearch.screen = netSearchResults
-		if len(msg.tracks) == 0 {
-			m.netSearch.err = "No results found"
-		}
-		return m, nil
-
-	case fbTracksResolvedMsg:
-		if len(msg.tracks) == 0 {
-			m.status.Show("No audio files found", statusTTLDefault)
-			return m, nil
-		}
-		if msg.replace {
-			m.player.Stop()
-			m.player.ClearPreload()
-			m.playlist.Replace(msg.tracks)
-			m.setInitialHeaderState(msg.tracks)
-			m.plCursor = 0
-			m.plScroll = 0
-		} else {
-			m.playlist.Add(msg.tracks...)
-		}
-		m.focus = focusPlaylist
-		m.applyHeightMode()
-		m.adjustScroll()
-		m.status.Showf(statusTTLDefault, "Added %d track(s)", len(msg.tracks))
-		if !m.player.IsPlaying() && m.playlist.Len() > 0 {
-			if msg.replace {
-				m.playlist.SetIndex(0)
-			}
-			cmd := m.playCurrentTrack()
-			m.notifyAll()
-			return m, cmd
 		}
 		return m, nil
 
@@ -476,51 +390,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.provLoading = false
 		m.feedLoading = false
 		m.buffering = false
-		return m, nil
-
-	case spotSearchResultsMsg:
-		m.spotSearch.loading = false
-		if msg.err != nil {
-			m.spotSearch.err = msg.err.Error()
-			return m, nil
-		}
-		m.spotSearch.results = msg.tracks
-		m.spotSearch.cursor = 0
-		m.spotSearch.screen = spotSearchResults
-		if len(msg.tracks) == 0 {
-			m.spotSearch.err = "No results found"
-		}
-		return m, nil
-
-	case spotPlaylistsMsg:
-		m.spotSearch.loading = false
-		if msg.err != nil {
-			m.spotSearch.err = msg.err.Error()
-			return m, nil
-		}
-		m.spotSearch.playlists = msg.playlists
-		m.spotSearch.cursor = 0
-		m.spotSearch.screen = spotSearchPlaylist
-		return m, nil
-
-	case spotAddedMsg:
-		m.spotSearch.loading = false
-		if msg.err != nil {
-			m.spotSearch.err = "Add failed: " + msg.err.Error()
-			return m, nil
-		}
-		m.status.Showf(statusTTLDefault, "Added to %q", msg.name)
-		m.closeSpotSearch()
-		return m, nil
-
-	case spotCreatedMsg:
-		m.spotSearch.loading = false
-		if msg.err != nil {
-			m.spotSearch.err = "Create failed: " + msg.err.Error()
-			return m, nil
-		}
-		m.status.Showf(statusTTLDefault, "Created %q & added track", msg.name)
-		m.closeSpotSearch()
 		return m, nil
 
 	case provAuthDoneMsg:
@@ -650,23 +519,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = m.player.Seek(msg.Offset)
 		m.notifyAll()
 		return m, nil
-	case ipc.LoadMsg:
-		tracks, err := m.localProvider.Tracks(msg.Playlist)
-		if err != nil {
-			if msg.Reply != nil {
-				msg.Reply <- ipc.Response{OK: false, Error: fmt.Sprintf("playlist %q: %v", msg.Playlist, err)}
-			}
-			return m, nil
-		}
-		m.playlist.Replace(tracks)
-		m.setInitialHeaderState(tracks)
-		m.loadedPlaylist = msg.Playlist
-		cmd := m.playCurrentTrack()
-		m.notifyAll()
-		if msg.Reply != nil {
-			msg.Reply <- ipc.Response{OK: true, Playlist: msg.Playlist, Total: len(tracks)}
-		}
-		return m, cmd
 	case ipc.QueueMsg:
 		t := playlist.Track{Path: msg.Path, Title: msg.Path}
 		m.playlist.Add(t)
@@ -714,50 +566,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case ipc.ShuffleMsg:
-		switch strings.ToLower(msg.Name) {
-		case "on":
-			if !m.playlist.Shuffled() {
-				m.playlist.ToggleShuffle()
-			}
-		case "off":
-			if m.playlist.Shuffled() {
-				m.playlist.ToggleShuffle()
-			}
-		default: // "toggle" or empty
-			m.playlist.ToggleShuffle()
-		}
-		shuffled := m.playlist.Shuffled()
-		if err := m.configSaver.Save("shuffle", fmt.Sprintf("%v", shuffled)); err != nil {
-			m.status.Showf(statusTTLDefault, "Config save failed: %s", err)
-		}
-		m.player.ClearPreload()
-		cmd := m.preloadNext()
 		if msg.Reply != nil {
-			msg.Reply <- ipc.Response{OK: true, Shuffle: &shuffled}
+			msg.Reply <- ipc.Response{OK: false, Error: "shuffle not supported in radio mode"}
 		}
-		return m, cmd
+		return m, nil
 
 	case ipc.RepeatMsg:
-		switch strings.ToLower(msg.Name) {
-		case "off":
-			m.playlist.SetRepeat(playlist.RepeatOff)
-		case "all":
-			m.playlist.SetRepeat(playlist.RepeatAll)
-		case "one":
-			m.playlist.SetRepeat(playlist.RepeatOne)
-		default: // "cycle" or empty
-			m.playlist.CycleRepeat()
-		}
-		mode := m.playlist.Repeat()
-		if err := m.configSaver.Save("repeat", fmt.Sprintf("%q", mode.String())); err != nil {
-			m.status.Showf(statusTTLDefault, "Config save failed: %s", err)
-		}
-		m.player.ClearPreload()
-		cmd := m.preloadNext()
 		if msg.Reply != nil {
-			msg.Reply <- ipc.Response{OK: true, Repeat: mode.String()}
+			msg.Reply <- ipc.Response{OK: false, Error: "repeat not supported in radio mode"}
 		}
-		return m, cmd
+		return m, nil
 
 	case ipc.MonoMsg:
 		switch strings.ToLower(msg.Name) {
@@ -870,9 +688,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		resp.Index = m.playlist.Index()
 		resp.Total = m.playlist.Len()
 		resp.Visualizer = m.vis.ModeName()
-		shuffled := m.playlist.Shuffled()
-		resp.Shuffle = &shuffled
-		resp.Repeat = m.playlist.Repeat().String()
 		mono := m.player.Mono()
 		resp.Mono = &mono
 		resp.Speed = m.player.Speed()

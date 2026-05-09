@@ -106,7 +106,7 @@ func (m Model) playlistScroll(visible int) int {
 	if m.plCursor < scroll {
 		return m.plCursor
 	}
-	for scroll < m.plCursor && m.albumSeparatorRows(tracks, scroll, m.plCursor, m.showAlbumHeaders) > visible {
+	for scroll < m.plCursor && m.plCursor-scroll >= visible {
 		scroll++
 	}
 	return scroll

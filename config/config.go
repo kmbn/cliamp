@@ -68,10 +68,7 @@ type Config struct {
 	Volume           float64     // dB, range [-30, +6]
 	EQ               [10]float64 // per-band gain in dB, range [-12, +12]
 	EQPreset         string      // preset name, or "" for custom
-	Repeat           string      // "off", "all", or "one"
-	Shuffle          bool
 	Mono             bool
-	Speed            float64                      // playback speed ratio: 0.25–2.0 (default 1.0)
 	AutoPlay         bool                         // start playback automatically on launch (radio streams, CLI tracks)
 	SeekStepLarge    int                          // seconds for Shift+Left/Right seek jumps
 	Theme            string                       // theme name, or "" for ANSI default
@@ -95,9 +92,7 @@ type Config struct {
 // that require a specific rate (commonly 48 kHz) work out of the box.
 func defaultConfig() Config {
 	return Config{
-		Repeat:          "off",
 		AutoPlay:        false,
-		Speed:           1.0,
 		SeekStepLarge:   30,
 		SampleRate:      0,
 		BufferMs:        100,
@@ -182,14 +177,6 @@ func Load() (Config, error) {
 			if v, err := strconv.ParseFloat(val, 64); err == nil {
 				cfg.Volume = v
 			}
-		case "repeat":
-			val = parseString(val)
-			switch strings.ToLower(val) {
-			case "all", "one", "off":
-				cfg.Repeat = strings.ToLower(val)
-			}
-		case "shuffle":
-			cfg.Shuffle = val == "true"
 		case "mono":
 			cfg.Mono = val == "true"
 		case "auto_play":
@@ -221,10 +208,6 @@ func Load() (Config, error) {
 		case "bit_depth":
 			if v, err := strconv.Atoi(val); err == nil {
 				cfg.BitDepth = v
-			}
-		case "speed":
-			if v, err := strconv.ParseFloat(val, 64); err == nil {
-				cfg.Speed = v
 			}
 		case "compact":
 			cfg.Compact = val == "true"
@@ -319,23 +302,13 @@ func Save(key, value string) error {
 // PlayerConfig is the subset of player controls needed to apply config.
 type PlayerConfig interface {
 	SetVolume(db float64)
-	SetSpeed(ratio float64)
 	SetEQBand(band int, dB float64)
 	ToggleMono()
-}
-
-// PlaylistConfig is the subset of playlist controls needed to apply config.
-type PlaylistConfig interface {
-	CycleRepeat()
-	ToggleShuffle()
 }
 
 // ApplyPlayer applies audio-engine settings from the config.
 func (c Config) ApplyPlayer(p PlayerConfig) {
 	p.SetVolume(c.Volume)
-	if c.Speed != 0 && c.Speed != 1.0 {
-		p.SetSpeed(c.Speed)
-	}
 	if c.EQPreset == "" || c.EQPreset == "Custom" {
 		for i, gain := range c.EQ {
 			p.SetEQBand(i, gain)
@@ -343,20 +316,6 @@ func (c Config) ApplyPlayer(p PlayerConfig) {
 	}
 	if c.Mono {
 		p.ToggleMono()
-	}
-}
-
-// ApplyPlaylist applies playlist-state settings from the config.
-func (c Config) ApplyPlaylist(pl PlaylistConfig) {
-	switch c.Repeat {
-	case "all":
-		pl.CycleRepeat() // off -> all
-	case "one":
-		pl.CycleRepeat() // off -> all
-		pl.CycleRepeat() // all -> one
-	}
-	if c.Shuffle {
-		pl.ToggleShuffle()
 	}
 }
 
@@ -368,9 +327,6 @@ func (c Config) SeekStepLargeDuration() time.Duration {
 // clamp constrains all Config fields to their valid ranges.
 func (c *Config) clamp() {
 	c.Volume = max(min(c.Volume, 6), -30)
-	if c.Speed < 0.25 || c.Speed > 2.0 {
-		c.Speed = 1.0
-	}
 	c.SeekStepLarge = max(min(c.SeekStepLarge, 600), 6)
 	c.SampleRate = clampSampleRate(c.SampleRate)
 	c.BufferMs = max(min(c.BufferMs, 500), 50)

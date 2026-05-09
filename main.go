@@ -93,7 +93,6 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 	defer p.Close()
 
 	cfg.ApplyPlayer(p)
-	cfg.ApplyPlaylist(pl)
 	ui.SetPadding(cfg.PaddingH, cfg.PaddingV)
 
 	if daemon {
@@ -129,8 +128,6 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 			Volume:        func() float64 { return p.Volume() },
 			Speed:         func() float64 { return p.Speed() },
 			Mono:          func() bool { return p.Mono() },
-			RepeatMode:    func() string { return pl.Repeat().String() },
-			Shuffle:       func() bool { return pl.Shuffled() },
 			EQBands:       func() [10]float64 { return p.EQBands() },
 			TrackTitle:    func() string { t, _ := pl.Current(); return t.Title },
 			TrackArtist:   func() string { t, _ := pl.Current(); return t.Artist },

@@ -131,22 +131,3 @@ func TestTrackFromURL(t *testing.T) {
 		})
 	}
 }
-
-func TestRepeatModeString(t *testing.T) {
-	tests := []struct {
-		mode RepeatMode
-		want string
-	}{
-		{RepeatOff, "Off"},
-		{RepeatAll, "All"},
-		{RepeatOne, "One"},
-		{RepeatMode(99), "Off"}, // unknown defaults to "Off"
-	}
-	for _, tt := range tests {
-		t.Run(tt.want, func(t *testing.T) {
-			if got := tt.mode.String(); got != tt.want {
-				t.Errorf("String() = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}

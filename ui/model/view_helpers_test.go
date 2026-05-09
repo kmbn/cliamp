@@ -1,7 +1,6 @@
 package model
 
 import (
-	"strings"
 	"testing"
 
 	"cliamp/playlist"
@@ -91,23 +90,6 @@ func TestPlaylistLabel(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("%s: playlistLabel = %q, want %q", tt.name, got, tt.want)
 		}
-	}
-}
-
-func TestFormatTrackRow(t *testing.T) {
-	// No duration: returns just "N. title".
-	row := formatTrackRow(3, "Song", 0)
-	if row != "3. Song" {
-		t.Errorf("no-duration row = %q, want %q", row, "3. Song")
-	}
-
-	// With duration: ends with the time string.
-	row = formatTrackRow(3, "Song", 222)
-	if !strings.HasSuffix(row, "3:42") {
-		t.Errorf("with-duration row %q does not end with %q", row, "3:42")
-	}
-	if !strings.HasPrefix(row, "3. Song") {
-		t.Errorf("with-duration row %q does not start with %q", row, "3. Song")
 	}
 }
 

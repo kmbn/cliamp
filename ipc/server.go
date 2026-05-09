@@ -160,12 +160,10 @@ func (s *Server) dispatch(req Request) Response {
 		return Response{OK: true}
 
 	case "next":
-		s.disp.Send(playback.NextMsg{})
-		return Response{OK: true}
+		return Response{OK: false, Error: "not supported in radio mode"}
 
 	case "prev":
-		s.disp.Send(playback.PrevMsg{})
-		return Response{OK: true}
+		return Response{OK: false, Error: "not supported in radio mode"}
 
 	case "volume":
 		s.disp.Send(VolumeMsg{DB: req.Value})

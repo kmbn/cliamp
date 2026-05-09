@@ -144,24 +144,6 @@ func TestImmediateHTTPStreamSeek(t *testing.T) {
 		check  func(*testing.T, *Model)
 	}{
 		{
-			name: "jump enter",
-			want: 7 * time.Second,
-			invoke: func(m *Model) tea.Cmd {
-				m.jumping = true
-				m.jumpInput = "10"
-				return m.handleJumpKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-			},
-			check: func(t *testing.T, m *Model) {
-				t.Helper()
-				if m.jumping {
-					t.Fatal("jump mode remained active after enter")
-				}
-				if m.jumpInput != "" {
-					t.Fatalf("jump input = %q, want empty", m.jumpInput)
-				}
-			},
-		},
-		{
 			name: "ipc seek",
 			want: 4 * time.Second,
 			invoke: func(m *Model) tea.Cmd {

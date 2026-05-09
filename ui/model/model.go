@@ -24,11 +24,9 @@ type focusArea int
 const (
 	focusPlaylist focusArea = iota
 	focusEQ
-	focusSpeed
 	focusProvPill
 	focusSearch
 	focusProvider
-	focusNetSearch
 )
 
 func (f focusArea) label() string {
@@ -37,16 +35,12 @@ func (f focusArea) label() string {
 		return "Playlist"
 	case focusEQ:
 		return "Equalizer"
-	case focusSpeed:
-		return "Speed"
 	case focusProvPill:
 		return "Source"
 	case focusProvider:
 		return "Provider"
 	case focusSearch:
 		return "Search"
-	case focusNetSearch:
-		return "Online Search"
 	default:
 		return ""
 	}
@@ -59,16 +53,9 @@ const (
 	screenKeymap
 	screenThemePicker
 	screenDevicePicker
-	screenFileBrowser
-	screenNavBrowser
-	screenPlaylistManager
-	screenSpotSearch
-	screenQueue
 	screenInfo
 	screenSearch
-	screenNetSearch
 	screenURLInput
-	screenJump
 	screenFullVisualizer
 )
 
@@ -81,33 +68,6 @@ func (s topLevelScreen) hidesVisualizer() bool {
 const (
 	maxPlVisible       = 12
 	maxPlExpandVisible = 24
-)
-
-type plMgrScreenType int
-
-const (
-	plMgrScreenList plMgrScreenType = iota
-	plMgrScreenTracks
-	plMgrScreenNewName
-)
-
-// navBrowseModeType identifies which Navidrome browse mode is active.
-type navBrowseModeType int
-
-const (
-	navBrowseModeMenu          navBrowseModeType = iota // top-level mode selector
-	navBrowseModeByAlbum                                // paginated album list → track list
-	navBrowseModeByArtist                               // artist list → track list (album-separated)
-	navBrowseModeByArtistAlbum                          // artist list → album list → track list
-)
-
-// navBrowseScreenType identifies which screen within the active browse mode is shown.
-type navBrowseScreenType int
-
-const (
-	navBrowseScreenList   navBrowseScreenType = iota // first-level list (artists or albums)
-	navBrowseScreenAlbums                            // artist's albums (ArtistAlbum mode only)
-	navBrowseScreenTracks                            // final song list in any mode
 )
 
 // ProviderEntry pairs a display name with a key and provider implementation.
@@ -135,13 +95,9 @@ type Model struct {
 	vis           *ui.Visualizer
 	seekStepLarge time.Duration
 
-	// Primed Nj seek: digit sets pct, next `j` completes.
-	pendingSeekActive bool
-	pendingSeekPct    int
-
 	// UI navigation
 	focus           focusArea
-	prevFocus       focusArea // focus to restore on cancel (search, net search)
+	prevFocus       focusArea // focus to restore on cancel (search)
 	eqCursor        int       // selected EQ band (0-9)
 	plCursor        int       // selected playlist item
 	plScroll        int       // scroll offset for playlist view
@@ -155,7 +111,6 @@ type Model struct {
 
 	// Provider state
 	provider      playlist.Provider
-	localProvider playlist.Provider // local playlist provider for file-based playlist management (always available)
 	providerLists []playlist.PlaylistInfo
 	provCursor    int
 	provScroll    int
@@ -167,29 +122,19 @@ type Model struct {
 	eqCustomLabel string          // non-empty = plugin-defined preset label (shown instead of "Custom")
 
 	// Overlay / feature state (see state.go for struct definitions)
-	search         searchState
-	netSearch      netSearchState
-	provSearch     provSearchState
-	seek           seekState
-	themePicker    themePickerState
-	keymap         keymapOverlay
-	queue          queueOverlay
-	plManager      plManagerState
-	spotSearch     spotSearchState
-	fileBrowser    fileBrowserState
-	navBrowser     navBrowserState
-	catalogBatch   catalogBatchState
-	reconnect      reconnectState
-	save           saveState
-	status         statusMsg
-	logLines       []logLine
-	network        networkStats
+	search       searchState
+	provSearch   provSearchState
+	seek         seekState
+	themePicker  themePickerState
+	keymap       keymapOverlay
+	catalogBatch catalogBatchState
+	reconnect    reconnectState
+	save         saveState
+	status       statusMsg
+	logLines     []logLine
+	network      networkStats
 	speedSaveAfter time.Duration
-	termTitle      terminalTitleState
-
-	// Jump to time mode
-	jumping   bool
-	jumpInput string
+	termTitle    terminalTitleState
 
 	// URL input mode (load playlist/stream URL at runtime)
 	urlInputting bool
@@ -211,8 +156,6 @@ type Model struct {
 	}
 
 	loadedPlaylist string // name of the currently loaded local playlist (for resume)
-
-	// activeProviderPlaylistID is the ID of the most recently loaded playlist
 	// from a non-local provider (Spotify, Navidrome, …). Used to highlight that
 	// row in the provider browser. Empty when no provider playlist is active.
 	activeProviderPlaylistID string
@@ -249,8 +192,6 @@ type Model struct {
 	// Track info overlay (metadata details)
 	showInfo bool
 
-	showAlbumHeaders bool
-
 	// Audio device picker overlay
 	devicePicker devicePickerState
 
@@ -276,26 +217,12 @@ func (m Model) activeScreen() topLevelScreen {
 		return screenThemePicker
 	case m.devicePicker.visible:
 		return screenDevicePicker
-	case m.fileBrowser.visible:
-		return screenFileBrowser
-	case m.navBrowser.visible:
-		return screenNavBrowser
-	case m.plManager.visible:
-		return screenPlaylistManager
-	case m.spotSearch.visible:
-		return screenSpotSearch
-	case m.queue.visible:
-		return screenQueue
 	case m.showInfo:
 		return screenInfo
 	case m.search.active:
 		return screenSearch
-	case m.netSearch.active:
-		return screenNetSearch
 	case m.urlInputting:
 		return screenURLInput
-	case m.jumping:
-		return screenJump
 	case m.fullVis:
 		return screenFullVisualizer
 	default:

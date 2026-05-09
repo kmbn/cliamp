@@ -28,32 +28,6 @@ func TestClampVolume(t *testing.T) {
 	}
 }
 
-func TestClampSpeed(t *testing.T) {
-	tests := []struct {
-		name  string
-		speed float64
-		want  float64
-	}{
-		{"normal", 1.0, 1.0},
-		{"valid slow", 0.5, 0.5},
-		{"valid fast", 1.5, 1.5},
-		{"too slow", 0.1, 1.0},
-		{"too fast", 3.0, 1.0},
-		{"min boundary", 0.25, 0.25},
-		{"max boundary", 2.0, 2.0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := defaultConfig()
-			cfg.Speed = tt.speed
-			cfg.clamp()
-			if cfg.Speed != tt.want {
-				t.Errorf("Speed = %f, want %f", cfg.Speed, tt.want)
-			}
-		})
-	}
-}
-
 func TestClampSampleRate(t *testing.T) {
 	tests := []struct {
 		input int
@@ -229,8 +203,6 @@ func TestOverridesApply(t *testing.T) {
 	cfg := defaultConfig()
 
 	vol := -15.0
-	shuffle := true
-	repeat := "all"
 	mono := true
 	theme := "dark"
 	compact := true
@@ -239,8 +211,6 @@ func TestOverridesApply(t *testing.T) {
 
 	overrides := Overrides{
 		Volume:     &vol,
-		Shuffle:    &shuffle,
-		Repeat:     &repeat,
 		Mono:       &mono,
 		Theme:      &theme,
 		Compact:    &compact,
@@ -252,12 +222,6 @@ func TestOverridesApply(t *testing.T) {
 
 	if cfg.Volume != -15 {
 		t.Errorf("Volume = %f, want -15", cfg.Volume)
-	}
-	if !cfg.Shuffle {
-		t.Error("Shuffle should be true")
-	}
-	if cfg.Repeat != "all" {
-		t.Errorf("Repeat = %q, want all", cfg.Repeat)
 	}
 	if !cfg.Mono {
 		t.Error("Mono should be true")
@@ -287,9 +251,6 @@ func TestOverridesApplyNil(t *testing.T) {
 	if cfg.Volume != original.Volume {
 		t.Error("nil overrides changed Volume")
 	}
-	if cfg.Shuffle != original.Shuffle {
-		t.Error("nil overrides changed Shuffle")
-	}
 }
 
 func TestOverridesApplyClamps(t *testing.T) {
@@ -307,20 +268,17 @@ func TestOverridesApplyClamps(t *testing.T) {
 // Mock player for ApplyPlayer tests
 type mockPlayer struct {
 	volume float64
-	speed  float64
 	eq     [10]float64
 	mono   bool
 }
 
 func (m *mockPlayer) SetVolume(db float64)           { m.volume = db }
-func (m *mockPlayer) SetSpeed(ratio float64)         { m.speed = ratio }
 func (m *mockPlayer) SetEQBand(band int, dB float64) { m.eq[band] = dB }
 func (m *mockPlayer) ToggleMono()                    { m.mono = !m.mono }
 
 func TestApplyPlayer(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.Volume = -10
-	cfg.Speed = 1.5
 	cfg.EQ = [10]float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	cfg.EQPreset = "" // Custom
 	cfg.Mono = true
@@ -331,9 +289,6 @@ func TestApplyPlayer(t *testing.T) {
 	if p.volume != -10 {
 		t.Errorf("volume = %f, want -10", p.volume)
 	}
-	if p.speed != 1.5 {
-		t.Errorf("speed = %f, want 1.5", p.speed)
-	}
 	for i, want := range cfg.EQ {
 		if p.eq[i] != want {
 			t.Errorf("eq[%d] = %f, want %f", i, p.eq[i], want)
@@ -341,18 +296,6 @@ func TestApplyPlayer(t *testing.T) {
 	}
 	if !p.mono {
 		t.Error("mono should be true")
-	}
-}
-
-func TestApplyPlayerDefaultSpeed(t *testing.T) {
-	cfg := defaultConfig()
-	cfg.Speed = 1.0 // default, should NOT call SetSpeed
-
-	p := &mockPlayer{}
-	cfg.ApplyPlayer(p)
-
-	if p.speed != 0 {
-		t.Errorf("speed = %f, should not have been set for 1.0x", p.speed)
 	}
 }
 
@@ -369,47 +312,5 @@ func TestApplyPlayerWithPreset(t *testing.T) {
 		if v != 0 {
 			t.Errorf("eq[%d] = %f, want 0 (preset should skip band apply)", i, v)
 		}
-	}
-}
-
-// Mock playlist for ApplyPlaylist tests
-type mockPlaylist struct {
-	repeatCycles int
-	shuffled     bool
-}
-
-func (m *mockPlaylist) CycleRepeat()   { m.repeatCycles++ }
-func (m *mockPlaylist) ToggleShuffle() { m.shuffled = !m.shuffled }
-
-func TestApplyPlaylist(t *testing.T) {
-	tests := []struct {
-		name        string
-		repeat      string
-		shuffle     bool
-		wantCycles  int
-		wantShuffle bool
-	}{
-		{"off no shuffle", "off", false, 0, false},
-		{"all", "all", false, 1, false},
-		{"one", "one", false, 2, false},
-		{"shuffle", "off", true, 0, true},
-		{"all + shuffle", "all", true, 1, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := defaultConfig()
-			cfg.Repeat = tt.repeat
-			cfg.Shuffle = tt.shuffle
-
-			pl := &mockPlaylist{}
-			cfg.ApplyPlaylist(pl)
-
-			if pl.repeatCycles != tt.wantCycles {
-				t.Errorf("repeat cycles = %d, want %d", pl.repeatCycles, tt.wantCycles)
-			}
-			if pl.shuffled != tt.wantShuffle {
-				t.Errorf("shuffled = %v, want %v", pl.shuffled, tt.wantShuffle)
-			}
-		})
 	}
 }

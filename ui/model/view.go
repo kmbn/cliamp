@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -129,26 +128,12 @@ func (m Model) View() tea.View {
 		content = m.renderThemePicker()
 	case screenDevicePicker:
 		content = m.renderDeviceOverlay()
-	case screenFileBrowser:
-		content = m.renderFileBrowser()
-	case screenNavBrowser:
-		content = m.renderNavBrowser()
-	case screenPlaylistManager:
-		content = m.renderPlaylistManager()
-	case screenSpotSearch:
-		content = m.renderSpotSearch()
-	case screenQueue:
-		content = m.renderQueueOverlay()
 	case screenInfo:
 		content = m.renderInfoOverlay()
 	case screenSearch:
 		content = m.renderSearchOverlay()
-	case screenNetSearch:
-		content = m.renderNetSearchOverlay()
 	case screenURLInput:
 		content = m.renderURLInputOverlay()
-	case screenJump:
-		content = m.renderJumpOverlay()
 	case screenFullVisualizer:
 		content = m.renderFullVisualizer()
 	default:
@@ -501,34 +486,7 @@ func (m Model) renderProviderPill() string {
 
 func (m Model) renderPlaylistHeader() string {
 	if m.focus == focusProvider {
-		return dimStyle.Render(fmt.Sprintf("── %s Playlists ──", m.provider.Name()))
-	}
-
-	var shuffle string
-	if m.playlist.Shuffled() {
-		shuffle = activeToggle.Render("[Shuffle]")
-	} else {
-		shuffle = dimStyle.Render("[") + trackStyle.Render("Shuffle") + dimStyle.Render("]")
-	}
-
-	repeatVal := m.playlist.Repeat().String()
-	if m.playlist.Repeat() != 0 {
-		repeatStr := fmt.Sprintf("[Repeat: %s]", repeatVal)
-		repeatStr = activeToggle.Render(repeatStr)
-		shuffle += " " + repeatStr
-	} else {
-		repeatStr := dimStyle.Render("[") + trackStyle.Render("Repeat") + dimStyle.Render(": ") + dimStyle.Render(repeatVal) + dimStyle.Render("]")
-		shuffle += " " + repeatStr
-	}
-
-	var queueStr string
-	if qLen := m.playlist.QueueLen(); qLen > 0 {
-		queueStr = " " + activeToggle.Render(fmt.Sprintf("[Queue: %d]", qLen))
-	}
-
-	var bookmarkStr string
-	if bookmarkCount := m.playlist.BookmarkCount(); bookmarkCount > 0 {
-		bookmarkStr = " " + activeToggle.Render(fmt.Sprintf("[★ %d]", bookmarkCount))
+		return dimStyle.Render(fmt.Sprintf("── %s Stations ──", m.provider.Name()))
 	}
 
 	var themeStr string
@@ -536,18 +494,13 @@ func (m Model) renderPlaylistHeader() string {
 		themeStr = " " + activeToggle.Render("[Theme: "+name+"]")
 	}
 
-	var posStr string
-	if total := m.playlist.Len(); total > 0 {
-		posStr = " " + dimStyle.Render(fmt.Sprintf("[%d/%d]", m.playlist.Index()+1, total))
-	}
-
 	headerStyle := dimStyle
-	headerLabel := "── Playlist ── "
+	headerLabel := "── Station ── "
 	if m.focus == focusPlaylist {
 		headerStyle = activeToggle
-		headerLabel = "▸─ Playlist ── "
+		headerLabel = "▸─ Station ── "
 	}
-	return headerStyle.Render(headerLabel) + shuffle + queueStr + bookmarkStr + posStr + themeStr + " " + dimStyle.Render("──")
+	return headerStyle.Render(headerLabel) + themeStr + " " + dimStyle.Render("──")
 }
 
 func (m Model) renderProviderList() string {
@@ -683,127 +636,38 @@ func (m Model) renderPlaylist() string {
 		return m.renderProviderList()
 	}
 
-	tracks := m.playlist.Tracks()
-	if len(tracks) == 0 {
-		var lines []string
-		if m.feedLoading {
-			lines = append(lines, loadingLine("Loading feed…"))
-		} else {
-			lines = append(lines, dimStyle.Render("  No tracks loaded"))
+	// Station card: show the currently loaded station's details.
+	track, _ := m.playlist.Current()
+	var lines []string
+
+	if m.feedLoading {
+		lines = append(lines, loadingLine("Loading station…"))
+	} else if track.Title == "" && track.Path == "" {
+		lines = append(lines, dimStyle.Render("  No station loaded"))
+	} else {
+		name := track.DisplayName()
+		if m.streamTitle != "" {
+			name = track.DisplayName()
 		}
-		return strings.Join(fitLines(lines, budget), "\n")
-	}
-
-	currentIdx := m.playlist.Index()
-	scroll := m.playlistScroll(budget)
-
-	lines := make([]string, 0, budget)
-	numWidth := len(fmt.Sprintf("%d", len(tracks)))
-
-	for row := range m.playlistRows(tracks, scroll, m.showAlbumHeaders) {
-		if row.Index < 0 {
-			if len(lines)+1 >= budget {
-				break
-			}
-			lines = append(lines, m.albumSeparator(row.Album, row.Year))
-			continue
-		}
-
-		if len(lines) >= budget {
-			break
-		}
-
-		i, t := row.Index, row.Track
 		prefix := "  "
 		style := playlistItemStyle
-
-		if i == currentIdx && m.player.IsPlaying() {
+		if m.player.IsPlaying() {
 			prefix = "▶ "
 			style = playlistActiveStyle
-		} else if strings.HasPrefix(t.Path, "ssh://") {
-			prefix = "↗ "
 		}
-
-		if m.focus == focusPlaylist && i == m.plCursor {
-			style = playlistSelectedStyle
+		lines = append(lines, style.Render(prefix+truncate(name, ui.PanelWidth-2)))
+		if m.streamTitle != "" {
+			lines = append(lines, dimStyle.Render("  ♪ "+truncate(m.streamTitle, ui.PanelWidth-4)))
 		}
-
-		if t.Unplayable {
-			if m.focus == focusPlaylist && i == m.plCursor {
-				style = dimStyle
-			} else {
-				style = playlistUnavailableStyle
-			}
+		if track.Genre != "" {
+			lines = append(lines, dimStyle.Render("  Genre: "+track.Genre))
 		}
-
-		name := t.DisplayName()
-		isBookmark := t.Bookmark
-		bookmarkBudget := 0
-		if isBookmark {
-			bookmarkBudget = 2 // "★ "
+		if track.Path != "" {
+			lines = append(lines, dimStyle.Render("  "+truncate(track.Path, ui.PanelWidth-2)))
 		}
-		queueSuffix := ""
-		if qp := m.playlist.QueuePosition(i); qp > 0 {
-			queueSuffix = fmt.Sprintf(" [Q%d]", qp)
-		}
-		queueLen := utf8.RuneCountInString(queueSuffix)
-
-		linePrefixWidth := utf8.RuneCountInString(prefix) + numWidth + 2 // 2 for ". "
-
-		// Truncate the track name only against queue/bookmark overhead, never album.
-		name = truncate(name, ui.PanelWidth-linePrefixWidth-queueLen-bookmarkBudget)
-		// Truncate the album to fit whatever space remains after the track name.
-		albumSuffix := ""
-		nameLen := utf8.RuneCountInString(name)
-		if t.Unplayable {
-			remaining := ui.PanelWidth - linePrefixWidth - bookmarkBudget - nameLen - queueLen
-			if remaining >= 4 {
-				albumSuffix = truncate(" (unavailable)", remaining)
-			}
-		} else if album := t.Album; album != "" && !m.showAlbumHeaders {
-			remaining := ui.PanelWidth - linePrefixWidth - bookmarkBudget - nameLen - queueLen - 3 // 3 = " · "
-			if remaining >= 4 {
-				albumSuffix = " · " + truncate(album, remaining)
-			}
-		}
-
-		numStr := fmt.Sprintf("%s%*d. ", prefix, numWidth, i+1)
-		line := style.Render(numStr)
-		if isBookmark {
-			line += activeToggle.Render("★ ")
-		}
-		line += style.Render(name)
-		if albumSuffix != "" {
-			line += dimStyle.Render(albumSuffix)
-		}
-		if queueSuffix != "" {
-			line += activeToggle.Render(queueSuffix)
-		}
-		lines = append(lines, line)
 	}
 
-	return strings.Join(padLines(lines, budget, len(lines)), "\n")
-}
-
-func (m Model) renderJumpOverlay() string {
-	pos := m.player.Position()
-	dur := m.player.Duration()
-	timeLine := fmt.Sprintf("%s / %s", formatJumpClock(pos), formatJumpClock(dur))
-	inputLine := dimStyle.Faint(true).Render("  " + formatJumpPlaceholder(dur))
-	if m.jumpInput != "" {
-		inputLine = playlistSelectedStyle.Render("  " + m.jumpInput + "_")
-	}
-
-	lines := []string{
-		titleStyle.Render("J U M P  T O  T I M E"),
-		"",
-		dimStyle.Render("  " + timeLine),
-		"",
-		inputLine,
-	}
-
-	lines = append(lines, "", helpKey("Enter", "Jump ")+helpKey("Esc", "Cancel"))
-	return m.centerOverlay(strings.Join(lines, "\n"))
+	return strings.Join(fitLines(lines, budget), "\n")
 }
 
 func (m Model) renderHelp() string {
@@ -821,15 +685,7 @@ func (m Model) renderHelp() string {
 	// Show only the 4-5 most relevant keys per mode; Ctrl+K always anchored for full list.
 	var hints []helpHint
 
-	if m.focus == focusSpeed {
-		hints = append(hints,
-			helpHint{helpKey("←→", "Speed "), 100},
-			helpHint{helpKey("[]", "Speed "), 90},
-			helpHint{helpKey("Spc", "▶❚❚ "), 80},
-			helpHint{helpKey("Tab", "Focus "), 70},
-			helpHint{helpKey("Ctrl+K", "Keys"), 100},
-		)
-	} else if m.focus == focusEQ {
+	if m.focus == focusEQ {
 		hints = append(hints,
 			helpHint{helpKey("←→", "Band "), 100},
 			helpHint{helpKey("↓↑", "Gain "), 100},
@@ -917,10 +773,7 @@ func (m Model) renderBottomStatus() string {
 
 	var left string
 	speedLabel := labelStyle.Render("SPD ")
-	if m.focus == focusSpeed {
-		speedLabel = activeToggle.Render("SPD ▸ ")
-		left = speedLabel + activeToggle.Render("["+speedVal+"]")
-	} else if speed != 1.0 {
+	if speed != 1.0 {
 		left = speedLabel + activeToggle.Render("["+speedVal+"]")
 	} else {
 		left = speedLabel + dimStyle.Render("[") + trackStyle.Render(speedVal) + dimStyle.Render("]")

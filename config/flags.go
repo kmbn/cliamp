@@ -3,8 +3,6 @@ package config
 // Overrides holds CLI flag values. Nil pointers mean "not set".
 type Overrides struct {
 	Volume          *float64
-	Shuffle         *bool
-	Repeat          *string
 	Mono            *bool
 	Theme           *string
 	Visualizer      *string
@@ -24,12 +22,6 @@ type Overrides struct {
 func (o Overrides) Apply(cfg *Config) {
 	if o.Volume != nil {
 		cfg.Volume = *o.Volume
-	}
-	if o.Shuffle != nil {
-		cfg.Shuffle = *o.Shuffle
-	}
-	if o.Repeat != nil {
-		cfg.Repeat = *o.Repeat
 	}
 	if o.Mono != nil {
 		cfg.Mono = *o.Mono

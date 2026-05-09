@@ -222,34 +222,11 @@ func (d *daemon) handleLoad(m ipc.LoadMsg) {
 }
 
 func (d *daemon) handleShuffle(m ipc.ShuffleMsg) {
-	switch strings.ToLower(m.Name) {
-	case "on":
-		if !d.playlist.Shuffled() {
-			d.playlist.ToggleShuffle()
-		}
-	case "off":
-		if d.playlist.Shuffled() {
-			d.playlist.ToggleShuffle()
-		}
-	default:
-		d.playlist.ToggleShuffle()
-	}
-	shuffled := d.playlist.Shuffled()
-	reply(m.Reply, ipc.Response{OK: true, Shuffle: &shuffled})
+	reply(m.Reply, ipc.Response{OK: false, Error: "shuffle not supported in radio mode"})
 }
 
 func (d *daemon) handleRepeat(m ipc.RepeatMsg) {
-	switch strings.ToLower(m.Name) {
-	case "off":
-		d.playlist.SetRepeat(playlist.RepeatOff)
-	case "all":
-		d.playlist.SetRepeat(playlist.RepeatAll)
-	case "one":
-		d.playlist.SetRepeat(playlist.RepeatOne)
-	default:
-		d.playlist.CycleRepeat()
-	}
-	reply(m.Reply, ipc.Response{OK: true, Repeat: d.playlist.Repeat().String()})
+	reply(m.Reply, ipc.Response{OK: false, Error: "repeat not supported in radio mode"})
 }
 
 func (d *daemon) handleMono(m ipc.MonoMsg) {
@@ -338,9 +315,6 @@ func (d *daemon) statusResponse() ipc.Response {
 	resp.Volume = d.player.Volume()
 	resp.Index = d.playlist.Index()
 	resp.Total = d.playlist.Len()
-	shuffled := d.playlist.Shuffled()
-	resp.Shuffle = &shuffled
-	resp.Repeat = d.playlist.Repeat().String()
 	mono := d.player.Mono()
 	resp.Mono = &mono
 	resp.Speed = d.player.Speed()

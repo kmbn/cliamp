@@ -190,7 +190,7 @@ func TestServerMultipleRequestsSameConnection(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = srv.Close() })
 
-	for _, cmd := range []string{"play", "pause", "next", "prev"} {
+	for _, cmd := range []string{"play", "pause"} {
 		resp, err := Send(sock, Request{Cmd: cmd})
 		if err != nil {
 			t.Fatalf("Send %s: %v", cmd, err)

@@ -26,7 +26,7 @@ func TestReservedKeysCoversHandleKey(t *testing.T) {
 	src := string(data)
 	// The main dispatch switch is anchored by its comment header; overlays
 	// and subhandlers have their own switches with different anchors.
-	start := strings.Index(src, "// Vim-style count prefix")
+	start := strings.Index(src, "// Main key dispatch.")
 	if start < 0 {
 		t.Fatal("could not locate main dispatch anchor in keys.go")
 	}

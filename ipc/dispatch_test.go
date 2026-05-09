@@ -72,15 +72,11 @@ func TestDispatchSimpleCommands(t *testing.T) {
 			}
 		}, true},
 		{"next", func(t *testing.T, got any) {
-			if _, ok := got.(playback.NextMsg); !ok {
-				t.Errorf("got %T, want playback.NextMsg", got)
-			}
-		}, true},
+			// next is a no-op in radio mode; no message dispatched
+		}, false},
 		{"prev", func(t *testing.T, got any) {
-			if _, ok := got.(playback.PrevMsg); !ok {
-				t.Errorf("got %T, want playback.PrevMsg", got)
-			}
-		}, true},
+			// prev is a no-op in radio mode; no message dispatched
+		}, false},
 	}
 
 	for _, tt := range tests {

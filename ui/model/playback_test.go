@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"cliamp/playlist"
 	"cliamp/ui"
 )
@@ -56,56 +55,13 @@ func (f *playbackFakeEngine) StreamBytes() (downloaded, total int64) { return 0,
 func (f *playbackFakeEngine) SamplesInto([]float64) int              { return 0 }
 func (f *playbackFakeEngine) SampleRate() int                        { return 44100 }
 
-func TestNavTrackListQueueStartsQueuedTrackWhenStopped(t *testing.T) {
+func TestTogglePlayPauseStartsPlayback(t *testing.T) {
 	player := &playbackFakeEngine{}
 	p := playlist.New()
 	p.Replace([]playlist.Track{
-		{Title: "Existing", Path: "https://example.com/existing", Stream: true},
-		{Title: "Other", Path: "https://example.com/other", Stream: true},
+		{Title: "Track", Path: "track.mp3", DurationSecs: 180},
 	})
 	p.SetIndex(0)
-
-	m := Model{
-		player:   player,
-		playlist: p,
-		vis:      ui.NewVisualizer(float64(player.SampleRate())),
-		navBrowser: navBrowserState{
-			tracks: []playlist.Track{
-				{Title: "Queued", Path: "https://example.com/queued", Stream: true},
-			},
-		},
-	}
-
-	cmd := m.handleNavTrackListKey(tea.KeyPressMsg{Text: "q"})
-	if cmd == nil {
-		t.Fatal("handleNavTrackListKey(q) = nil, want command")
-	}
-	if current, idx := m.playlist.Current(); current.Title != "Queued" || idx != 2 {
-		t.Fatalf("current = (%q,%d), want (\"Queued\",2)", current.Title, idx)
-	}
-	if m.plCursor != 2 {
-		t.Fatalf("plCursor = %d, want 2", m.plCursor)
-	}
-	if p.QueueLen() != 0 {
-		t.Fatalf("QueueLen() = %d, want 0 after starting queued track", p.QueueLen())
-	}
-}
-
-func TestTogglePlayPauseRestartsQueuedCurrentTrack(t *testing.T) {
-	player := &playbackFakeEngine{}
-	p := playlist.New()
-	p.Replace([]playlist.Track{
-		{Title: "Base", Path: "base.mp3", DurationSecs: 180},
-		{Title: "Queued", Path: "queued.mp3", DurationSecs: 180},
-	})
-	p.SetIndex(0)
-	p.Queue(1)
-	if track, ok := p.Next(); !ok || track.Title != "Queued" {
-		t.Fatalf("Next() = (%q,%t), want (\"Queued\",true)", track.Title, ok)
-	}
-	if !p.CurrentIsQueued() {
-		t.Fatal("CurrentIsQueued() = false, want true")
-	}
 
 	m := Model{
 		player:   player,
@@ -117,24 +73,19 @@ func TestTogglePlayPauseRestartsQueuedCurrentTrack(t *testing.T) {
 		_ = cmd()
 	}
 
-	if len(player.playCalls) != 1 || player.playCalls[0] != "queued.mp3" {
-		t.Fatalf("playCalls = %v, want [queued.mp3]", player.playCalls)
-	}
-	if current, idx := m.playlist.Current(); current.Title != "Queued" || idx != 1 {
-		t.Fatalf("current = (%q,%d), want (\"Queued\",1)", current.Title, idx)
+	if len(player.playCalls) != 1 || player.playCalls[0] != "track.mp3" {
+		t.Fatalf("playCalls = %v, want [track.mp3]", player.playCalls)
 	}
 }
 
-func TestPlayCurrentTrackUnplayableUsesSelectionOrder(t *testing.T) {
+func TestPlayCurrentTrackPlaysCurrentPosition(t *testing.T) {
 	player := &playbackFakeEngine{}
 	p := playlist.New()
 	p.Replace([]playlist.Track{
-		{Title: "Queued", Path: "https://example.com/queued", Stream: true},
-		{Title: "Missing", Unplayable: true},
-		{Title: "Replacement", Path: "https://example.com/replacement", Stream: true},
+		{Title: "Radio A", Path: "http://stream.example.com/a", Stream: true},
+		{Title: "Radio B", Path: "http://stream.example.com/b", Stream: true},
 	})
 	p.SetIndex(1)
-	p.Queue(0)
 
 	m := Model{
 		player:   player,
@@ -146,28 +97,14 @@ func TestPlayCurrentTrackUnplayableUsesSelectionOrder(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("playCurrentTrack() = nil, want command")
 	}
-	if idx := m.playlist.Index(); idx != 2 {
-		t.Fatalf("playlist.Index() = %d, want 2", idx)
-	}
-	if m.plCursor != 2 {
-		t.Fatalf("plCursor = %d, want 2", m.plCursor)
-	}
-	if m.status.text != "Track unavailable, skipping..." {
-		t.Fatalf("status.text = %q, want %q", m.status.text, "Track unavailable, skipping...")
-	}
-	if p.QueueLen() != 1 {
-		t.Fatalf("QueueLen() = %d, want 1", p.QueueLen())
+	if m.plCursor != 1 {
+		t.Fatalf("plCursor = %d, want 1", m.plCursor)
 	}
 }
 
-func TestPlayCurrentTrackUnplayableStopsWhenNoReplacementExists(t *testing.T) {
+func TestPlayCurrentTrackEmptyPlaylistReturnsNil(t *testing.T) {
 	player := &playbackFakeEngine{playing: true}
 	p := playlist.New()
-	p.Replace([]playlist.Track{
-		{Title: "Playing", Path: "playing.mp3", DurationSecs: 2},
-		{Title: "Missing", Unplayable: true},
-	})
-	p.SetIndex(1)
 
 	m := Model{
 		player:   player,
@@ -176,18 +113,6 @@ func TestPlayCurrentTrackUnplayableStopsWhenNoReplacementExists(t *testing.T) {
 	}
 
 	if cmd := m.playCurrentTrack(); cmd != nil {
-		t.Fatalf("playCurrentTrack() = %v, want nil", cmd)
-	}
-	if len(player.playCalls) != 0 {
-		t.Fatalf("playCalls = %v, want none", player.playCalls)
-	}
-	if player.IsPlaying() {
-		t.Fatal("player.IsPlaying() = true, want false")
-	}
-	if _, idx := m.playlist.Current(); idx != 1 {
-		t.Fatalf("current index = %d, want 1", idx)
-	}
-	if m.status.text != "No available tracks" {
-		t.Fatalf("status.text = %q, want %q", m.status.text, "No available tracks")
+		t.Fatalf("playCurrentTrack() on empty = %v, want nil", cmd)
 	}
 }

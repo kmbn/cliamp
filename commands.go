@@ -109,19 +109,6 @@ func overridesFromFlags(c *cli.Command) (config.Overrides, error) {
 		v := c.Float64("vol")
 		ov.Volume = &v
 	}
-	if c.IsSet("shuffle") {
-		v := c.Bool("shuffle")
-		ov.Shuffle = &v
-	}
-	if c.IsSet("repeat") {
-		v := strings.ToLower(c.String("repeat"))
-		switch v {
-		case "off", "all", "one":
-			ov.Repeat = &v
-		default:
-			return ov, fmt.Errorf("--repeat must be off, all, or one (got %q)", v)
-		}
-	}
 	if c.IsSet("mono") {
 		v := true
 		ov.Mono = &v

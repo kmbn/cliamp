@@ -10,8 +10,6 @@ import (
 
 	"cliamp/applog"
 	"cliamp/player"
-	"cliamp/playlist"
-	"cliamp/provider"
 )
 
 // searchState holds state for the playlist search overlay.
@@ -20,26 +18,6 @@ type searchState struct {
 	query   string
 	results []int // indices into playlist tracks
 	cursor  int
-}
-
-// netSearchScreenType identifies which screen of the net search overlay is active.
-type netSearchScreenType int
-
-const (
-	netSearchInput   netSearchScreenType = iota // typing search query
-	netSearchResults                            // browsing search results
-)
-
-// netSearchState holds state for the internet search overlay.
-type netSearchState struct {
-	active     bool
-	screen     netSearchScreenType
-	query      string
-	soundcloud bool // true = SoundCloud (scsearch), false = YouTube (ytsearch)
-	loading    bool
-	results    []playlist.Track
-	cursor     int
-	err        string
 }
 
 // provSearchState holds state for filtering the provider playlist list.
@@ -79,94 +57,6 @@ type keymapOverlay struct {
 	search      string
 	filtered    []int         // indices into entries
 	entries     []keymapEntry // core keys + plugin keys, rebuilt on openKeymap
-}
-
-// queueOverlay holds state for the queue manager overlay.
-type queueOverlay struct {
-	visible bool
-	cursor  int
-}
-
-// plManagerState holds state for the playlist manager overlay.
-type plManagerState struct {
-	visible     bool
-	screen      plMgrScreenType
-	cursor      int // view-index: offset into filtered when filter != "", else direct index
-	playlists   []playlist.PlaylistInfo
-	selPlaylist string           // playlist name open in screen 1
-	tracks      []playlist.Track // tracks in the selected playlist
-	newName     string
-	confirmDel  bool
-
-	// Filter (`/`) state. Reset on screen change. `filtered` indexes into
-	// `playlists` (list screen) or `tracks` (tracks screen).
-	filtering   bool
-	filter      string
-	filtered    []int
-	savedCursor int // cursor before `/` was pressed, restored on Esc
-}
-
-// fileBrowserState holds state for the file browser overlay.
-type fileBrowserState struct {
-	visible     bool
-	dir         string
-	entries     []fbEntry
-	cursor      int
-	scroll      int
-	savedCursor int
-	savedScroll int
-	selected    map[string]bool
-	err         string
-	searching   bool
-	search      string
-	filtered    []int // indices into entries
-}
-
-// navBrowserState holds state for the provider browser overlay.
-type navBrowserState struct {
-	prov         playlist.Provider
-	visible      bool
-	mode         navBrowseModeType
-	screen       navBrowseScreenType
-	cursor       int
-	scroll       int
-	artists      []provider.ArtistInfo
-	albums       []provider.AlbumInfo
-	tracks       []playlist.Track
-	selArtist    provider.ArtistInfo
-	selAlbum     provider.AlbumInfo
-	sortType     string
-	albumLoading bool
-	albumDone    bool
-	loading      bool
-	searching    bool
-	search       string
-	searchIdx    []int
-}
-
-// spotSearchScreenType identifies which screen of the Spotify search overlay is active.
-type spotSearchScreenType int
-
-const (
-	spotSearchInput    spotSearchScreenType = iota // typing search query
-	spotSearchResults                              // browsing search results
-	spotSearchPlaylist                             // picking a playlist to add to
-	spotSearchNewName                              // typing new playlist name
-)
-
-// spotSearchState holds state for the provider search + add-to-playlist overlay.
-type spotSearchState struct {
-	prov      playlist.Provider // the provider being searched (may differ from active provider)
-	visible   bool
-	screen    spotSearchScreenType
-	query     string
-	results   []playlist.Track
-	cursor    int
-	loading   bool
-	playlists []playlist.PlaylistInfo // user's Spotify playlists for picker
-	selTrack  playlist.Track          // track selected to add
-	newName   string                  // new playlist name input
-	err       string
 }
 
 // catalogBatchState holds state for lazy-loading catalog entries from a provider.CatalogLoader.
