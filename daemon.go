@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"cliamp/applog"
-	"cliamp/external/local"
 	"cliamp/internal/playback"
 	"cliamp/internal/resume"
 	"cliamp/ipc"
@@ -21,14 +20,13 @@ import (
 
 // runDaemon runs cliamp without a TUI: serves IPC against the shared
 // player+playlist, auto-advances tracks, exits on SIGINT/SIGTERM.
-func runDaemon(p *player.Player, pl *playlist.Playlist, localProv *local.Provider, autoPlay bool) error {
+func runDaemon(p *player.Player, pl *playlist.Playlist, autoPlay bool) error {
 	fmt.Fprintf(os.Stderr, "cliamp: running headless (socket: %s)\n", ipc.DefaultSocketPath())
 	applog.Info("daemon: starting headless mode")
 
 	d := &daemon{
-		player:    p,
-		playlist:  pl,
-		localProv: localProv,
+		player:   p,
+		playlist: pl,
 	}
 
 	if autoPlay && pl.Len() > 0 {
@@ -65,10 +63,9 @@ func runDaemon(p *player.Player, pl *playlist.Playlist, localProv *local.Provide
 // playlist state and "what plays next" decisions; the player itself is
 // internally thread-safe so blocking I/O (Play, PlayYTDL) runs without it.
 type daemon struct {
-	mu        sync.Mutex
-	player    *player.Player
-	playlist  *playlist.Playlist
-	localProv *local.Provider
+	mu       sync.Mutex
+	player   *player.Player
+	playlist *playlist.Playlist
 }
 
 func (d *daemon) Send(msg any) {
@@ -221,18 +218,7 @@ func (d *daemon) prevTrack() {
 }
 
 func (d *daemon) handleLoad(m ipc.LoadMsg) {
-	if d.localProv == nil {
-		reply(m.Reply, ipc.Response{OK: false, Error: "local provider unavailable"})
-		return
-	}
-	tracks, err := d.localProv.Tracks(m.Playlist)
-	if err != nil {
-		reply(m.Reply, ipc.Response{OK: false, Error: fmt.Sprintf("playlist %q: %v", m.Playlist, err)})
-		return
-	}
-	d.playlist.Replace(tracks)
-	d.playCurrent()
-	reply(m.Reply, ipc.Response{OK: true, Playlist: m.Playlist, Total: len(tracks)})
+	reply(m.Reply, ipc.Response{OK: false, Error: "load not supported in radio-only mode"})
 }
 
 func (d *daemon) handleShuffle(m ipc.ShuffleMsg) {

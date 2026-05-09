@@ -14,7 +14,6 @@ import (
 	"cliamp/applog"
 	"cliamp/cmd"
 	"cliamp/config"
-	"cliamp/external/spotify"
 	"cliamp/ipc"
 	"cliamp/player"
 	"cliamp/pluginmgr"
@@ -32,7 +31,6 @@ func buildApp() *cli.Command {
 		&cli.BoolFlag{Name: "no-mono", Usage: "disable mono output"},
 		&cli.BoolFlag{Name: "auto-play", Usage: "start playback immediately"},
 		&cli.BoolFlag{Name: "compact", Usage: "compact mode (80 columns)"},
-		&cli.StringFlag{Name: "provider", Usage: "default provider: radio, navidrome, plex, jellyfin, emby, spotify, soundcloud, yt, youtube, ytmusic"},
 		&cli.StringFlag{Name: "start-theme", Usage: "UI theme name"},
 		&cli.StringFlag{Name: "visualizer", Usage: "visualizer mode"},
 		&cli.StringFlag{Name: "eq-preset", Usage: "EQ preset name"},
@@ -41,7 +39,6 @@ func buildApp() *cli.Command {
 		&cli.IntFlag{Name: "resample-quality", Usage: "resample quality factor (1-4)", HideDefault: true},
 		&cli.IntFlag{Name: "bit-depth", Usage: "PCM bit depth: 16 or 32", HideDefault: true},
 		&cli.StringFlag{Name: "audio-device", Usage: "audio output device (use 'list' to show)"},
-		&cli.StringFlag{Name: "playlist", Usage: "load a local TOML playlist by name and start playing"},
 		&cli.StringFlag{Name: "log-level", Usage: "log level: debug, info, warn, error"},
 		&cli.BoolFlag{Name: "low-power", Usage: "low-power mode: disable visualizer to minimize CPU"},
 		&cli.BoolFlag{Name: "daemon", Aliases: []string{"d"}, Usage: "run headless (no TUI), serving IPC for scripts/Waybar"},
@@ -65,10 +62,7 @@ func buildApp() *cli.Command {
 		Commands: []*cli.Command{
 			upgradeCommand(),
 			pluginsCommand(),
-			playlistCommand(),
 			historyCommand(),
-			setupCommand(),
-			spotifyCommand(),
 			ipcSimpleCommand("play", "resume playback"),
 			ipcSimpleCommand("pause", "pause playback"),
 			ipcSimpleCommand("toggle", "play/pause toggle"),
@@ -78,8 +72,6 @@ func buildApp() *cli.Command {
 			statusCommand(),
 			volumeCommand(),
 			seekCommand(),
-			loadCommand(),
-			queueCommand(),
 			themeCommand(),
 			visCommand(),
 			shuffleCommand(),
@@ -146,15 +138,6 @@ func overridesFromFlags(c *cli.Command) (config.Overrides, error) {
 		v := true
 		ov.Compact = &v
 	}
-	if c.IsSet("provider") {
-		v := strings.ToLower(c.String("provider"))
-		switch v {
-		case "radio", "navidrome", "spotify", "plex", "jellyfin", "emby", "soundcloud", "yt", "youtube", "ytmusic":
-			ov.Provider = &v
-		default:
-			return ov, fmt.Errorf("--provider must be radio, navidrome, spotify, plex, jellyfin, emby, soundcloud, yt, youtube, or ytmusic (got %q)", v)
-		}
-	}
 	if c.IsSet("start-theme") {
 		v := c.String("start-theme")
 		ov.Theme = &v
@@ -186,10 +169,6 @@ func overridesFromFlags(c *cli.Command) (config.Overrides, error) {
 	if c.IsSet("audio-device") {
 		v := c.String("audio-device")
 		ov.AudioDevice = &v
-	}
-	if c.IsSet("playlist") {
-		v := c.String("playlist")
-		ov.Playlist = &v
 	}
 	if c.IsSet("log-level") {
 		v := c.String("log-level")
@@ -289,166 +268,6 @@ func pluginsCommand() *cli.Command {
 						fmt.Println(item)
 					}
 					return nil
-				},
-			},
-		},
-	}
-}
-
-func setupCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "setup",
-		Usage: "interactive wizard to configure remote providers",
-		Description: "Walks through configuring Navidrome, Plex, Jellyfin, Spotify,\n" +
-			"and YouTube Music. Validates connections and writes\n" +
-			"~/.config/cliamp/config.toml.",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			return cmd.Setup()
-		},
-	}
-}
-
-func spotifyCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "spotify",
-		Usage: "manage Spotify integration",
-		Commands: []*cli.Command{
-			{
-				Name:  "reset",
-				Usage: "clear stored Spotify credentials and force re-authentication",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					path, err := spotify.CredsPath()
-					if err != nil {
-						return fmt.Errorf("locate credentials: %w", err)
-					}
-					removed, err := spotify.DeleteCreds()
-					if err != nil {
-						return fmt.Errorf("remove credentials: %w", err)
-					}
-					if !removed {
-						fmt.Println("No stored Spotify credentials to remove.")
-						return nil
-					}
-					fmt.Printf("Removed %s\n", path)
-					fmt.Println("Restart cliamp and select Spotify to sign in again.")
-					return nil
-				},
-			},
-		},
-	}
-}
-
-func playlistCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "playlist",
-		Usage: "manage local playlists",
-		Commands: []*cli.Command{
-			{
-				Name:  "list",
-				Usage: "list playlists with track counts",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					return cmd.PlaylistList()
-				},
-			},
-			{
-				Name:      "create",
-				Usage:     "create a new playlist from files/directories",
-				ArgsUsage: "\"Name\" <file|dir> [...]",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "ssh", Usage: "SSH host for remote directory walking"},
-				},
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() == 0 {
-						return fmt.Errorf("playlist name is required")
-					}
-					if c.Args().Len() < 2 && c.String("ssh") == "" {
-						return fmt.Errorf("at least one file or directory is required (or use --ssh)")
-					}
-					name := c.Args().First()
-					paths := c.Args().Slice()[1:]
-					return cmd.PlaylistCreate(name, paths, c.String("ssh"))
-				},
-			},
-			{
-				Name:      "add",
-				Usage:     "append tracks to an existing playlist",
-				ArgsUsage: "\"Name\" <file|dir> [...]",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() < 2 {
-						return fmt.Errorf("usage: cliamp playlist add \"Name\" file1 [file2 ...]")
-					}
-					return cmd.PlaylistAdd(c.Args().First(), c.Args().Slice()[1:])
-				},
-			},
-			{
-				Name:      "show",
-				Usage:     "display tracks in a playlist",
-				ArgsUsage: "\"Name\"",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{Name: "json", Usage: "machine-readable JSON output"},
-				},
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() == 0 {
-						return fmt.Errorf("usage: cliamp playlist show \"Name\" [--json]")
-					}
-					return cmd.PlaylistShow(c.Args().First(), c.Bool("json"))
-				},
-			},
-			{
-				Name:      "remove",
-				Usage:     "remove a track by index",
-				ArgsUsage: "\"Name\"",
-				Flags: []cli.Flag{
-					&cli.IntFlag{Name: "index", Usage: "track index (1-based)", Required: true},
-				},
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() == 0 {
-						return fmt.Errorf("usage: cliamp playlist remove \"Name\" --index N")
-					}
-					return cmd.PlaylistRemove(c.Args().First(), int(c.Int("index")))
-				},
-			},
-			{
-				Name:      "delete",
-				Usage:     "delete an entire playlist",
-				ArgsUsage: "\"Name\"",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() == 0 {
-						return fmt.Errorf("usage: cliamp playlist delete \"Name\"")
-					}
-					return cmd.PlaylistDelete(c.Args().First())
-				},
-			},
-			{
-				Name:      "bookmark",
-				Usage:     "toggle bookmark on a track by index",
-				ArgsUsage: "\"Name\"",
-				Flags: []cli.Flag{
-					&cli.IntFlag{Name: "index", Usage: "track index (1-based)", Required: true},
-				},
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() == 0 {
-						return fmt.Errorf("usage: cliamp playlist bookmark \"Name\" --index N")
-					}
-					return cmd.PlaylistBookmark(c.Args().First(), int(c.Int("index")))
-				},
-			},
-			{
-				Name:  "bookmarks",
-				Usage: "list all bookmarked tracks across playlists",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					return cmd.PlaylistBookmarks()
-				},
-			},
-			{
-				Name:      "enrich",
-				Usage:     "probe duration and album metadata for SSH tracks",
-				ArgsUsage: "\"Name\"",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					if c.Args().Len() == 0 {
-						return fmt.Errorf("usage: cliamp playlist enrich \"Name\"")
-					}
-					return cmd.PlaylistEnrich(c.Args().First())
 				},
 			},
 		},
@@ -586,36 +405,6 @@ func seekCommand() *cli.Command {
 				return fmt.Errorf("invalid seek value %q", c.Args().First())
 			}
 			_, err = ipcSend(ipc.Request{Cmd: "seek", Value: secs})
-			return err
-		},
-	}
-}
-
-func loadCommand() *cli.Command {
-	return &cli.Command{
-		Name:      "load",
-		Usage:     "load a playlist into the player",
-		ArgsUsage: "\"Playlist Name\"",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			if c.Args().Len() == 0 {
-				return fmt.Errorf("usage: cliamp load \"Playlist Name\"")
-			}
-			_, err := ipcSend(ipc.Request{Cmd: "load", Playlist: c.Args().First()})
-			return err
-		},
-	}
-}
-
-func queueCommand() *cli.Command {
-	return &cli.Command{
-		Name:      "queue",
-		Usage:     "queue a track for playback",
-		ArgsUsage: "</path/to/file.mp3>",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			if c.Args().Len() == 0 {
-				return fmt.Errorf("usage: cliamp queue /path/to/file.mp3")
-			}
-			_, err := ipcSend(ipc.Request{Cmd: "queue", Path: c.Args().First()})
 			return err
 		},
 	}

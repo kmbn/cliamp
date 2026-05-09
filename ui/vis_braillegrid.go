@@ -81,42 +81,6 @@ func (g *brailleGrid) render(rows int) string {
 	return strings.Join(lines, "\n")
 }
 
-// drawLine plots a Bresenham line into the grid at the given tier.
-func (g *brailleGrid) drawLine(x0, y0, x1, y1 int, tier int8) {
-	dx := x1 - x0
-	if dx < 0 {
-		dx = -dx
-	}
-	dy := -(y1 - y0)
-	if dy > 0 {
-		dy = -dy
-	}
-	sx := 1
-	if x0 >= x1 {
-		sx = -1
-	}
-	sy := 1
-	if y0 >= y1 {
-		sy = -1
-	}
-	err := dx + dy
-	for {
-		g.set(x0, y0, tier)
-		if x0 == x1 && y0 == y1 {
-			return
-		}
-		e2 := 2 * err
-		if e2 >= dy {
-			err += dy
-			x0 += sx
-		}
-		if e2 <= dx {
-			err += dx
-			y0 += sy
-		}
-	}
-}
-
 // rng64 advances a 64-bit LCG and returns a [0,1) double.
 func rng64(state *uint64) float64 {
 	*state = *state*6364136223846793005 + 1442695040888963407

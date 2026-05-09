@@ -3,7 +3,6 @@ package resolve
 import (
 	"bufio"
 	"io"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -118,19 +117,4 @@ func entriesToTracks(entries []m3uEntry) []playlist.Track {
 	return tracks
 }
 
-// resolveLocalM3U opens a local .m3u/.m3u8 file, parses it with EXTINF
-// metadata, and returns the resulting tracks. Relative paths in the M3U
-// are resolved against the directory containing the M3U file.
-func resolveLocalM3U(path string) ([]playlist.Track, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
 
-	entries, err := parseM3U(f, filepath.Dir(path))
-	if err != nil {
-		return nil, err
-	}
-	return entriesToTracks(entries), nil
-}

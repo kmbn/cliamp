@@ -298,7 +298,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.Stop()
 			m.player.ClearPreload()
 		}
-		m.resetYTDLBatch()
 		m.playlist.Replace(msg)
 		m.setInitialHeaderState(msg)
 		m.plCursor = 0
@@ -388,31 +387,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case ytdlBatchMsg:
-		// Discard stale responses from a previous batch session.
-		if msg.gen != m.ytdlBatch.gen {
-			return m, nil
-		}
-		m.ytdlBatch.loading = false
-		if msg.err != nil {
-			m.ytdlBatch.done = true
-			m.status.Showf(statusTTLBatch, "Radio batch load failed: %v", msg.err)
-			return m, nil
-		}
-		if len(msg.tracks) == 0 {
-			m.ytdlBatch.done = true
-			return m, nil
-		}
-		m.playlist.Add(msg.tracks...)
-		m.ytdlBatch.offset += len(msg.tracks)
-		if len(msg.tracks) < ytdlBatchSize {
-			m.ytdlBatch.done = true
-			return m, nil
-		}
-		// Immediately fetch the next batch.
-		m.ytdlBatch.loading = true
-		return m, fetchYTDLBatchCmd(m.ytdlBatch.gen, m.ytdlBatch.url, m.ytdlBatch.offset, ytdlBatchSize)
-
 	case feedTrackResolvedMsg:
 		m.feedLoading = false
 		if len(msg.tracks) == 0 {
@@ -438,22 +412,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.status.Show("No tracks found at URL.", statusTTLDefault)
 		}
-		if len(msg.tracks) > 0 {
-			// Set up incremental loading for YouTube Radio playlists.
-			// The source URLs are carried in the message so we don't
-			// need to re-scan pendingURLs (which misses interactive loads).
-			batchCmd := m.initYTDLBatch(msg.urls)
-			if msg.autoPlay && m.playlist.Len() > 0 && !m.player.IsPlaying() {
-				playCmd := m.playCurrentTrack()
-				m.notifyAll()
-				if batchCmd != nil {
-					return m, tea.Batch(playCmd, batchCmd)
-				}
-				return m, playCmd
-			}
-			if batchCmd != nil {
-				return m, batchCmd
-			}
+		if len(msg.tracks) > 0 && msg.autoPlay && m.playlist.Len() > 0 && !m.player.IsPlaying() {
+			playCmd := m.playCurrentTrack()
+			m.notifyAll()
+			return m, playCmd
 		}
 		return m, nil
 
@@ -488,7 +450,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.replace {
 			m.player.Stop()
 			m.player.ClearPreload()
-			m.resetYTDLBatch()
 			m.playlist.Replace(msg.tracks)
 			m.setInitialHeaderState(msg.tracks)
 			m.plCursor = 0
@@ -529,28 +490,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case streamPreloadedMsg:
 		m.preloading = false
 		return m, nil
-
-	case ytdlSavedMsg:
-		m.save.finishDownload()
-		if msg.err != nil {
-			m.status.Showf(statusTTLMedium, "Download failed: %s", msg.err)
-		} else {
-			m.status.Showf(statusTTLMedium, "Saved to %s", msg.path)
-		}
-		return m, nil
-
-	case ytdlResolvedMsg:
-		m.buffering = false
-		if msg.err != nil {
-			m.err = msg.err
-			return m, nil
-		}
-		// Update the track with the downloaded local file and metadata.
-		m.playlist.SetTrack(msg.index, msg.track)
-		// Play the local file (seekable).
-		cmd := m.playTrack(msg.track)
-		m.notifyAll()
-		return m, cmd
 
 	case error:
 		if errors.Is(msg, playlist.ErrNeedsAuth) {

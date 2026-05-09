@@ -181,7 +181,6 @@ type Model struct {
 	fileBrowser    fileBrowserState
 	navBrowser     navBrowserState
 	catalogBatch   catalogBatchState
-	ytdlBatch      ytdlBatchState
 	reconnect      reconnectState
 	save           saveState
 	status         statusMsg

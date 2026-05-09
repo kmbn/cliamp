@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -139,18 +138,4 @@ func stripMirrorSuffix(s string) string {
 	return s
 }
 
-// resolveLocalPLS opens a local .pls file, parses it, and returns the
-// resulting tracks.
-func resolveLocalPLS(path string) ([]playlist.Track, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
 
-	entries, err := parsePLS(f)
-	if err != nil {
-		return nil, err
-	}
-	return plsEntriesToTracks(entries), nil
-}

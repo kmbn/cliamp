@@ -6,7 +6,6 @@ type Overrides struct {
 	Shuffle         *bool
 	Repeat          *string
 	Mono            *bool
-	Provider        *string
 	Theme           *string
 	Visualizer      *string
 	EQPreset        *string
@@ -17,7 +16,6 @@ type Overrides struct {
 	Play            *bool
 	Compact         *bool
 	AudioDevice     *string
-	Playlist        *string
 	LogLevel        *string
 	LowPower        *bool
 }
@@ -35,9 +33,6 @@ func (o Overrides) Apply(cfg *Config) {
 	}
 	if o.Mono != nil {
 		cfg.Mono = *o.Mono
-	}
-	if o.Provider != nil {
-		cfg.Provider = *o.Provider
 	}
 	if o.Theme != nil {
 		cfg.Theme = *o.Theme
@@ -68,9 +63,6 @@ func (o Overrides) Apply(cfg *Config) {
 	}
 	if o.AudioDevice != nil {
 		cfg.AudioDevice = *o.AudioDevice
-	}
-	if o.Playlist != nil {
-		cfg.Playlist = *o.Playlist
 	}
 	if o.LogLevel != nil {
 		cfg.LogLevel = *o.LogLevel

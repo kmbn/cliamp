@@ -79,28 +79,6 @@ type streamPreloadedMsg struct{}
 
 type attachNotifierMsg struct{ notifier playback.Notifier }
 
-// ytdlResolvedMsg carries a lazily resolved yt-dlp track (direct audio URL).
-type ytdlResolvedMsg struct {
-	index int
-	track playlist.Track
-	err   error
-}
-
-// ytdlBatchMsg carries an incrementally loaded batch of yt-dlp tracks.
-// The gen field ties the response to a specific batch session so stale
-// responses from a previous or reloaded playlist are discarded.
-type ytdlBatchMsg struct {
-	gen    uint64 // batch session generation
-	tracks []playlist.Track
-	err    error
-}
-
-// ytdlSavedMsg signals that an async yt-dlp download-to-disk completed.
-type ytdlSavedMsg struct {
-	path string
-	err  error
-}
-
 // — Navidrome browser message types —
 
 // navArtistsLoadedMsg carries the full artist list from a provider browser.
@@ -153,13 +131,6 @@ func fetchPlaylistsCmd(prov playlist.Provider) tea.Cmd {
 			return err
 		}
 		return pls
-	}
-}
-
-func fetchYTDLBatchCmd(gen uint64, pageURL string, start, count int) tea.Cmd {
-	return func() tea.Msg {
-		tracks, err := resolve.ResolveYTDLBatch(pageURL, start, count)
-		return ytdlBatchMsg{gen: gen, tracks: tracks, err: err}
 	}
 }
 
@@ -227,13 +198,6 @@ func preloadYTDLStreamCmd(p player.Engine, pageURL string, knownDuration time.Du
 	return func() tea.Msg {
 		p.PreloadYTDL(pageURL, knownDuration) // errors silently ignored
 		return streamPreloadedMsg{}
-	}
-}
-
-func saveYTDLCmd(pageURL string, saveDir string) tea.Cmd {
-	return func() tea.Msg {
-		path, err := resolve.DownloadYTDL(pageURL, saveDir)
-		return ytdlSavedMsg{path: path, err: err}
 	}
 }
 

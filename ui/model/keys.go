@@ -809,16 +809,9 @@ func (m *Model) saveTrack() tea.Cmd {
 		return nil
 	}
 
-	// YouTube/yt-dlp tracks: async download directly to ~/Music/cliamp/.
-	if playlist.IsYouTubeURL(track.Path) || playlist.IsYTDL(track.Path) {
-		m.status.Clear()
-		m.save.startDownload()
-		return saveYTDLCmd(track.Path, saveDir)
-	}
-
-	// Only save local temp files (yt-dlp downloads), not streams or user's own files.
-	if track.Stream || !strings.HasPrefix(track.Path, os.TempDir()) {
-		m.status.Show("Only downloaded tracks can be saved", statusTTLShort)
+	// Radio streams cannot be saved.
+	if track.Stream {
+		m.status.Show("Radio streams cannot be saved", statusTTLShort)
 		return nil
 	}
 
@@ -1566,7 +1559,6 @@ func (m *Model) handlePlMgrTracksKey(msg tea.KeyPressMsg) tea.Cmd {
 func (m *Model) plMgrLoadAndPlay(startIdx int) tea.Cmd {
 	m.player.Stop()
 	m.player.ClearPreload()
-	m.resetYTDLBatch()
 	m.playlist.Replace(m.plManager.tracks)
 	m.setInitialHeaderState(m.plManager.tracks)
 	m.loadedPlaylist = m.plManager.selPlaylist

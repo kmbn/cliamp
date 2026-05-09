@@ -5,22 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"cliamp/applog"
 	"cliamp/config"
-	"cliamp/external/emby"
-	"cliamp/external/jellyfin"
-	"cliamp/external/local"
-	"cliamp/external/navidrome"
-	"cliamp/external/plex"
 	"cliamp/external/radio"
-	"cliamp/external/soundcloud"
-	"cliamp/external/spotify"
-	"cliamp/external/ytmusic"
 	"cliamp/internal/appdir"
 	"cliamp/internal/appmeta"
 	"cliamp/internal/playback"
@@ -55,115 +46,10 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 		applog.Info("cliamp starting (version=%s level=%s)", appmeta.Version(), appliedLevel)
 	}
 
-	// Build provider list: Radio is always available, Navidrome and Spotify if configured.
+	// Radio is the only provider.
 	radioProv := radio.New()
-	localProv := local.New()
-
-	var providers []model.ProviderEntry
-	providers = append(providers, model.ProviderEntry{Key: "radio", Name: "Radio", Provider: radioProv})
-	if localProv != nil {
-		providers = append(providers, model.ProviderEntry{Key: "local", Name: "Local", Provider: localProv})
-	}
-
-	var navClient *navidrome.NavidromeClient
-	if c := navidrome.NewFromConfig(cfg.Navidrome); c != nil {
-		navClient = c
-	} else if c := navidrome.NewFromEnv(); c != nil {
-		navClient = c
-	}
-	if navClient != nil {
-		providers = append(providers, model.ProviderEntry{Key: "navidrome", Name: "Navidrome", Provider: navClient})
-	}
-
-	if plexProv := plex.NewFromConfig(cfg.Plex); plexProv != nil {
-		providers = append(providers, model.ProviderEntry{Key: "plex", Name: "Plex", Provider: plexProv})
-	}
-
-	if jellyProv := jellyfin.NewFromConfig(cfg.Jellyfin); jellyProv != nil {
-		providers = append(providers, model.ProviderEntry{Key: "jellyfin", Name: "Jellyfin", Provider: jellyProv})
-	}
-
-	if embyProv := emby.NewFromConfig(cfg.Emby); embyProv != nil {
-		providers = append(providers, model.ProviderEntry{Key: "emby", Name: "Emby", Provider: embyProv})
-	}
-
-	var spotifyProv *spotify.SpotifyProvider
-	if cfg.Spotify.IsSet() {
-		spotifyProv = spotify.New(nil, cfg.Spotify.ClientID, cfg.Spotify.Bitrate)
-		providers = append(providers, model.ProviderEntry{Key: "spotify", Name: "Spotify", Provider: spotifyProv})
-	}
-
-	if scProv := soundcloud.NewFromConfig(soundcloud.Config{
-		Enabled:     cfg.SoundCloud.Enabled,
-		User:        cfg.SoundCloud.User,
-		CookiesFrom: cfg.SoundCloud.CookiesFrom,
-	}); scProv != nil {
-		// Mirror the cookies_from setting onto the player so streaming yt-dlp
-		// invocations use the same browser session as resolve. Last write wins
-		// if [ytmusic] cookies_from also set this earlier in run().
-		if cfg.SoundCloud.CookiesFrom != "" {
-			player.SetYTDLCookiesFrom(cfg.SoundCloud.CookiesFrom)
-		}
-		providers = append(providers, model.ProviderEntry{Key: "soundcloud", Name: "SoundCloud", Provider: scProv})
-	}
-
-	var ytProviders ytmusic.Providers
-	ytWanted := cfg.YouTubeMusic.IsSetOrFallback(ytmusic.FallbackCredentials)
-	if !ytWanted {
-		switch cfg.Provider {
-		case "yt", "youtube", "ytmusic":
-			ytWanted = true
-		}
-	}
-	if ytWanted {
-		ytClientID, ytClientSecret := cfg.YouTubeMusic.ResolveCredentials(ytmusic.FallbackCredentials)
-		if cfg.YouTubeMusic.CookiesFrom != "" {
-			player.SetYTDLCookiesFrom(cfg.YouTubeMusic.CookiesFrom)
-		}
-		if ytClientID == "" || ytClientSecret == "" {
-			fmt.Fprintf(os.Stderr, "YouTube: no credentials available (configure client_id/client_secret in config.toml)\n")
-		} else {
-			if !player.YTDLPAvailable() {
-				fmt.Fprintf(os.Stderr, "\nYouTube requires yt-dlp for audio playback.\n")
-				fmt.Fprintf(os.Stderr, "Install command: %s\n\n", player.YtdlpInstallHint())
-				fmt.Fprintf(os.Stderr, "Press Enter to install automatically, or Ctrl+C to skip... ")
-				fmt.Scanln()
-				fmt.Fprintf(os.Stderr, "Installing yt-dlp...\n")
-				if err := player.InstallYTDLP(); err != nil {
-					fmt.Fprintf(os.Stderr, "Installation failed: %v\n", err)
-					fmt.Fprintf(os.Stderr, "YouTube providers disabled. Install manually and restart.\n\n")
-				} else {
-					fmt.Fprintf(os.Stderr, "yt-dlp installed successfully!\n\n")
-				}
-			}
-			if player.YTDLPAvailable() {
-				ytProviders = ytmusic.New(nil, ytClientID, ytClientSecret, cfg.YouTubeMusic.CookiesFrom != "")
-				providers = append(providers,
-					model.ProviderEntry{Key: "yt", Name: "YouTube (All)", Provider: ytProviders.All},
-					model.ProviderEntry{Key: "youtube", Name: "YouTube", Provider: ytProviders.Video},
-					model.ProviderEntry{Key: "ytmusic", Name: "YouTube Music", Provider: ytProviders.Music},
-				)
-			}
-		}
-	}
-
-	if spotifyProv != nil {
-		defer spotifyProv.Close()
-	}
-	if ytProviders.Music != nil {
-		defer ytProviders.Music.Close()
-	}
-
-	if len(positional) > 0 && (positional[0] == "search" || positional[0] == "search-sc") {
-		if len(positional) == 1 {
-			return fmt.Errorf("search requires a query string (e.g. cliamp search \"never gonna give you up\")")
-		}
-		prefix := "ytsearch1:"
-		if positional[0] == "search-sc" {
-			prefix = "scsearch1:"
-		}
-		query := strings.Join(positional[1:], " ")
-		positional = []string{prefix + query}
+	providers := []model.ProviderEntry{
+		{Key: "radio", Name: "Radio", Provider: radioProv},
 	}
 
 	resolved, err := resolve.Args(positional)
@@ -171,22 +57,8 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 		return err
 	}
 
-	defaultProvider := cfg.Provider
-	if defaultProvider == "" {
-		defaultProvider = "radio"
-	}
-
-	defaultRadio := len(positional) == 0 && defaultProvider == "radio"
-
 	pl := playlist.New()
-	if cfg.Playlist != "" && localProv != nil {
-		tracks, err := localProv.Tracks(cfg.Playlist)
-		if err != nil {
-			return fmt.Errorf("playlist %q: %w", cfg.Playlist, err)
-		}
-		pl.Add(tracks...)
-		cfg.AutoPlay = true
-	} else if defaultRadio {
+	if len(positional) == 0 {
 		pl.Add(
 			playlist.Track{Path: "http://radio.cliamp.stream/lofi/stream", Title: "Lofi Stream", Stream: true},
 			playlist.Track{Path: "http://radio.cliamp.stream/synthwave/stream", Title: "Synthwave Stream", Stream: true},
@@ -220,20 +92,12 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 	}
 	defer p.Close()
 
-	if spotifyProv != nil {
-		p.RegisterStreamerFactory("spotify:", spotifyProv.NewStreamer)
-	}
-
-	p.RegisterBufferedURLMatcher(func(u string) bool {
-		return navidrome.IsSubsonicStreamURL(u) || jellyfin.IsStreamURL(u) || emby.IsStreamURL(u)
-	})
-
 	cfg.ApplyPlayer(p)
 	cfg.ApplyPlaylist(pl)
 	ui.SetPadding(cfg.PaddingH, cfg.PaddingV)
 
 	if daemon {
-		return runDaemon(p, pl, localProv, cfg.AutoPlay)
+		return runDaemon(p, pl, cfg.AutoPlay)
 	}
 
 	themes := theme.LoadAll()
@@ -247,7 +111,7 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 		luaMgr.SetReservedKeys(model.ReservedKeys())
 	}
 
-	m := model.New(p, pl, providers, defaultProvider, localProv, themes, luaMgr, config.SaveFunc{})
+	m := model.New(p, pl, providers, "radio", nil, themes, luaMgr, config.SaveFunc{})
 
 	if luaMgr != nil {
 		luaMgr.SetStateProvider(luaplugin.StateProvider{
@@ -310,7 +174,7 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 		m.SetCompact(true)
 	}
 
-	if !defaultRadio && len(positional) > 0 {
+	if len(positional) > 0 {
 		if rs := resume.Load(); rs.Path != "" && rs.PositionSec > 0 {
 			m.SetResume(rs.Path, rs.PositionSec)
 		}

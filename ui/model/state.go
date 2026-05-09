@@ -187,15 +187,6 @@ type catalogBatchState struct {
 	done    bool // true when all stations have been loaded
 }
 
-// ytdlBatchState holds state for incremental yt-dlp playlist loading.
-type ytdlBatchState struct {
-	url     string
-	gen     uint64
-	offset  int
-	done    bool
-	loading bool
-}
-
 // reconnectState holds state for stream auto-reconnect with exponential backoff.
 type reconnectState struct {
 	attempts int
@@ -227,12 +218,6 @@ func (s saveState) activityText() string {
 
 func (s *saveState) startDownload() {
 	s.pendingDownloads++
-}
-
-func (s *saveState) finishDownload() {
-	if s.pendingDownloads > 0 {
-		s.pendingDownloads--
-	}
 }
 
 // statusTTL is how long a status line stays visible.
