@@ -4,7 +4,6 @@ package model
 import (
 	"time"
 
-	"cliamp/history"
 	"cliamp/internal/playback"
 	"cliamp/player"
 	"cliamp/playlist"
@@ -89,11 +88,10 @@ const (
 // Model is the Bubbletea model for the CLIAMP TUI.
 type Model struct {
 	// Core playback
-	player        player.Engine
-	playlist      *playlist.Playlist
-	configSaver   ConfigSaver
-	vis           *ui.Visualizer
-	seekStepLarge time.Duration
+	player      player.Engine
+	playlist    *playlist.Playlist
+	configSaver ConfigSaver
+	vis         *ui.Visualizer
 
 	// UI navigation
 	focus           focusArea
@@ -124,12 +122,10 @@ type Model struct {
 	// Overlay / feature state (see state.go for struct definitions)
 	search         searchState
 	provSearch     provSearchState
-	seek           seekState
 	themePicker    themePickerState
 	keymap         keymapOverlay
 	catalogBatch   catalogBatchState
 	reconnect      reconnectState
-	save           saveState
 	status         statusMsg
 	logLines       []logLine
 	network        networkStats
@@ -148,25 +144,9 @@ type Model struct {
 	buffering   bool
 	bufferingAt time.Time // when buffering started, for elapsed display
 
-	// resume holds the path and position to seek to when the matching track
-	// starts playing. Cleared after the seek is performed.
-	resume struct {
-		path string
-		secs int
-	}
-
-	loadedPlaylist string // name of the currently loaded local playlist (for resume)
 	// from a non-local provider (Spotify, Navidrome, …). Used to highlight that
 	// row in the provider browser. Empty when no provider playlist is active.
 	activeProviderPlaylistID string
-
-	// exitResume holds the playback state captured just before player.Close()
-	// so ResumeState() can read it after the player is shut down.
-	exitResume struct {
-		path     string
-		secs     int
-		playlist string
-	}
 
 	// preloading is true while a preloadStreamCmd goroutine is in-flight.
 	preloading bool
@@ -175,12 +155,6 @@ type Model struct {
 	streamTitle string
 
 	notifier playback.Notifier
-
-	// History recorder (nil if config dir unavailable; safe to call when nil)
-	historyStore *history.Store
-
-	// initialDir is the starting path for the file browser ('o' key).
-	initialDir string
 
 	// Theme state: -1 = Default (ANSI), 0+ = index into themes
 	themes   []theme.Theme

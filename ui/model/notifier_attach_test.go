@@ -21,6 +21,15 @@ func (f *fakeNotifier) Seeked(position time.Duration) {
 	f.seeked = append(f.seeked, position)
 }
 
+// fakeEngine is a player.Engine stub wired for notifier tests: always "playing"
+// with a known duration.
+type fakeEngine struct {
+	playbackFakeEngine
+}
+
+func (f *fakeEngine) IsPlaying() bool         { return true }
+func (f *fakeEngine) Duration() time.Duration { return time.Hour }
+
 func TestAttachNotifierPublishesCurrentPlaybackState(t *testing.T) {
 	pl := playlist.New()
 	pl.Add(playlist.Track{

@@ -172,38 +172,3 @@ func TestPlsEntriesToTracksCollapsesMirrors(t *testing.T) {
 		t.Error("collapsed stream should be Stream=true, Realtime=true")
 	}
 }
-
-func TestPlsEntriesToTracksMultipleTracks(t *testing.T) {
-	// Mixed local/remote entries should produce individual tracks
-	entries := []plsEntry{
-		{Num: 1, File: "/home/user/song.mp3", Title: "Song One"},
-		{Num: 2, File: "/home/user/song2.mp3", Title: "Song Two"},
-	}
-
-	tracks := plsEntriesToTracks(entries)
-	if len(tracks) != 2 {
-		t.Fatalf("got %d tracks, want 2", len(tracks))
-	}
-	if tracks[0].Title != "Song One" {
-		t.Errorf("track[0].Title = %q, want Song One", tracks[0].Title)
-	}
-}
-
-func TestHumanizeBasename(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"clr-podcast-467", "clr podcast 467"},
-		{"no-dashes-here", "no dashes here"},
-		{"nodashes", "nodashes"},
-		{"", ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			if got := humanizeBasename(tt.input); got != tt.want {
-				t.Errorf("humanizeBasename(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}

@@ -131,21 +131,6 @@ func (m *Model) playTrack(track playlist.Track) tea.Cmd {
 	m.reconnect.attempts = 0
 	m.reconnect.at = time.Time{}
 	m.streamTitle = ""
-	m.seek.active = false
-	m.seek.timer = 0
-	m.seek.timerFor = 0
-	m.seek.grace = 0
-	m.seek.graceFor = 0
-	// Stream yt-dlp URLs (YouTube, SoundCloud, Bandcamp, etc.) via pipe chain.
-	if playlist.IsYTDL(track.Path) {
-		m.buffering = true
-		m.bufferingAt = time.Now()
-		m.err = nil
-		dur := time.Duration(track.DurationSecs) * time.Second
-		return playYTDLStreamCmd(m.player, track.Path, dur)
-	}
-	// Fire now-playing notification for Navidrome tracks.
-	m.nowPlaying(track)
 	dur := time.Duration(track.DurationSecs) * time.Second
 	if track.Stream {
 		m.buffering = true
@@ -165,7 +150,6 @@ func (m *Model) playTrack(track playlist.Track) tea.Cmd {
 		}
 	} else {
 		m.err = nil
-		m.applyResume()
 	}
 
 	return m.preloadNext()
@@ -196,27 +180,4 @@ func (m *Model) togglePlayPause() tea.Cmd {
 // restart instead of resuming buffered audio.
 func shouldReconnectOnUnpause(track playlist.Track, idx int) bool {
 	return idx >= 0 && track.IsLive()
-}
-
-// applyResume seeks to the saved resume position if the current track matches.
-// It clears the resume state after a successful seek so it only fires once.
-func (m *Model) applyResume() {
-	// secs == 0 is indistinguishable from "never played"; skip resume.
-	if m.resume.path == "" || m.resume.secs <= 0 {
-		return
-	}
-	track, _ := m.playlist.Current()
-	if track.Path != m.resume.path {
-		return
-	}
-	// Only seek if the player reports the stream is seekable; otherwise the
-	// seek is a no-op that returns nil, which we must not mistake for success.
-	if !m.player.Seekable() {
-		return
-	}
-	target := time.Duration(m.resume.secs) * time.Second
-	if err := m.player.Seek(target - m.player.Position()); err == nil {
-		m.resume.path = ""
-		m.resume.secs = 0
-	}
 }

@@ -2,14 +2,10 @@ package model
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
-	"cliamp/internal/fileutil"
 	"cliamp/playlist"
 	"cliamp/provider"
 	"cliamp/ui"
@@ -17,31 +13,10 @@ import (
 
 // quit shuts down the player and signals the TUI to exit.
 func (m *Model) quit() tea.Cmd {
-	// Only save resume for seekable tracks:
-	// - local files (not stream)
-	// - HTTP streams with known duration (podcast MP3s, seek-by-reconnect)
-	// Exclude YTDL (position unreliable) and real-time live streams.
-	if track, _ := m.playlist.Current(); track.Path != "" &&
-		!playlist.IsYTDL(track.Path) && !track.IsLive() &&
-		m.player.IsPlaying() {
-		if secs := int(m.player.Position().Seconds()); secs > 0 {
-			m.exitResume.path = track.Path
-			m.exitResume.secs = secs
-			m.exitResume.playlist = m.loadedPlaylist
-		}
-	}
-
 	m.flushPendingSpeedSave()
 	m.player.Close()
 	m.quitting = true
 	return tea.Quit
-}
-
-// scrobbleCurrent fires a scrobble for the currently playing track if applicable.
-func (m *Model) scrobbleCurrent() {
-	if track, idx := m.playlist.Current(); idx >= 0 {
-		m.maybeScrobble(track, m.player.Position(), m.player.Duration())
-	}
 }
 
 func (m *Model) providerScrollStep() int {
@@ -261,16 +236,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		case "G", "end":
 			m.providerToBottom()
 			return m.maybeLoadCatalogBatch()
-		case "J":
-			return m.switchToProvider("jellyfin")
-		case "E":
-			return m.switchToProvider("emby")
-		case "S":
-			return m.switchToProvider("spotify")
-		case "C":
-			return m.switchToProvider("soundcloud")
-		case "L":
-			return m.switchToProvider("local")
 		case "R":
 			return m.switchToProvider("radio")
 		case "ctrl+x":
@@ -328,13 +293,11 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.notifyPlayback()
 
 	case ">", ".":
-		m.scrobbleCurrent()
 		cmd := m.nextTrack()
 		m.notifyPlayback()
 		return cmd
 
 	case "<", ",":
-		m.scrobbleCurrent()
 		cmd := m.prevTrack()
 		m.notifyPlayback()
 		return cmd
@@ -344,24 +307,14 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 			if m.eqCursor > 0 {
 				m.eqCursor--
 			}
-		} else {
-			return m.doSeek(-5 * time.Second)
 		}
-
-	case "shift+left":
-		return m.doSeek(-m.seekStepLarge)
 
 	case "right":
 		if m.focus == focusEQ {
 			if m.eqCursor < eqBandCount-1 {
 				m.eqCursor++
 			}
-		} else {
-			return m.doSeek(5 * time.Second)
 		}
-
-	case "shift+right":
-		return m.doSeek(m.seekStepLarge)
 
 	case "up", "k":
 		if m.focus == focusEQ {
@@ -429,7 +382,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 			if m.buffering && m.plCursor == m.playlist.Index() {
 				break
 			}
-			m.scrobbleCurrent()
 			m.playlist.SetIndex(m.plCursor)
 			cmd := m.playCurrentTrack()
 			m.notifyPlayback()
@@ -478,11 +430,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.applyEQPreset()
 		m.saveEQ()
 
-	case "ctrl+s":
-		return m.saveTrack()
-	case "S":
-		return m.switchToProvider("spotify")
-
 	case "m":
 		m.player.ToggleMono()
 
@@ -497,11 +444,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	case "ctrl+f":
 		m.openProviderSearch()
 
-	case "J":
-		return m.switchToProvider("jellyfin")
-	case "E":
-		return m.switchToProvider("emby")
-
 	case "t":
 		m.openThemePicker()
 
@@ -512,16 +454,8 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.urlInputting = true
 		m.urlInput = ""
 
-	case "L":
-		return m.switchToProvider("local")
 	case "R":
 		return m.switchToProvider("radio")
-	case "P":
-		return m.switchToProvider("plex")
-	case "Y":
-		return m.switchToProvider("yt")
-	case "C":
-		return m.switchToProvider("soundcloud")
 
 	case "v":
 		m.vis.CycleMode()
@@ -572,58 +506,6 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.openKeymap()
 	}
 
-	return nil
-}
-
-// saveTrack copies the current track to ~/Music/cliamp/ with a clean filename.
-// For yt-dlp tracks (piped streams), triggers an async download via yt-dlp.
-// For local temp files, copies synchronously.
-func (m *Model) saveTrack() tea.Cmd {
-	track, idx := m.playlist.Current()
-	if idx < 0 {
-		m.status.Show("Nothing to save", statusTTLShort)
-		return nil
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		m.status.Showf(statusTTLShort, "Save failed: %s", err)
-		return nil
-	}
-
-	saveDir := filepath.Join(home, "Music", "cliamp")
-	if err := os.MkdirAll(saveDir, 0o755); err != nil {
-		m.status.Showf(statusTTLShort, "Save failed: %s", err)
-		return nil
-	}
-
-	// Radio streams cannot be saved.
-	if track.Stream {
-		m.status.Show("Radio streams cannot be saved", statusTTLShort)
-		return nil
-	}
-
-	ext := filepath.Ext(track.Path)
-	name := track.Title
-	if track.Artist != "" {
-		name = track.Artist + " - " + name
-	}
-	// Sanitize filename: remove path separators and other problematic chars.
-	name = strings.Map(func(r rune) rune {
-		if r == '/' || r == '\\' || r == ':' || r == '*' || r == '?' || r == '"' || r == '<' || r == '>' || r == '|' {
-			return '_'
-		}
-		return r
-	}, name)
-
-	dest := filepath.Join(saveDir, name+ext)
-
-	if err := fileutil.CopyFile(track.Path, dest); err != nil {
-		m.status.Showf(statusTTLShort, "Save failed: %s", err)
-		return nil
-	}
-
-	m.status.Showf(statusTTLDefault, "Saved to ~/Music/cliamp/%s", name+ext)
 	return nil
 }
 

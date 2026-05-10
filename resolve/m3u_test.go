@@ -12,7 +12,7 @@ http://example.com/song1.mp3
 #EXTINF:180,Artist - Song Two
 http://example.com/song2.mp3
 `
-	entries, err := parseM3U(strings.NewReader(input), "")
+	entries, err := parseM3U(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("parseM3U error: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestParseM3UNoHeader(t *testing.T) {
 	input := `http://example.com/stream1.mp3
 http://example.com/stream2.mp3
 `
-	entries, err := parseM3U(strings.NewReader(input), "")
+	entries, err := parseM3U(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("parseM3U error: %v", err)
 	}
@@ -59,7 +59,7 @@ http://example.com/stream2.mp3
 func TestParseM3UBOM(t *testing.T) {
 	// UTF-8 BOM prefix should be stripped
 	input := "\xef\xbb\xbf#EXTM3U\n#EXTINF:60,Song\nhttp://example.com/song.mp3\n"
-	entries, err := parseM3U(strings.NewReader(input), "")
+	entries, err := parseM3U(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("parseM3U error: %v", err)
 	}
@@ -78,45 +78,17 @@ func TestParseM3USkipsComments(t *testing.T) {
 http://example.com/song.mp3
 #EXTVLCOPT:some-option
 `
-	entries, err := parseM3U(strings.NewReader(input), "")
+	entries, err := parseM3U(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("parseM3U error: %v", err)
 	}
 	if len(entries) != 1 {
 		t.Fatalf("got %d entries, want 1", len(entries))
-	}
-}
-
-func TestParseM3URelativePaths(t *testing.T) {
-	input := `#EXTM3U
-#EXTINF:60,Song
-music/song.mp3
-`
-	entries, err := parseM3U(strings.NewReader(input), "/home/user")
-	if err != nil {
-		t.Fatalf("parseM3U error: %v", err)
-	}
-	if len(entries) != 1 {
-		t.Fatalf("got %d entries, want 1", len(entries))
-	}
-	if entries[0].Path != "/home/user/music/song.mp3" {
-		t.Errorf("Path = %q, want /home/user/music/song.mp3", entries[0].Path)
-	}
-}
-
-func TestParseM3UAbsolutePaths(t *testing.T) {
-	input := "/absolute/path/song.mp3\n"
-	entries, err := parseM3U(strings.NewReader(input), "/home/user")
-	if err != nil {
-		t.Fatalf("parseM3U error: %v", err)
-	}
-	if entries[0].Path != "/absolute/path/song.mp3" {
-		t.Errorf("Path = %q, want /absolute/path/song.mp3", entries[0].Path)
 	}
 }
 
 func TestParseM3UEmpty(t *testing.T) {
-	entries, err := parseM3U(strings.NewReader(""), "")
+	entries, err := parseM3U(strings.NewReader(""))
 	if err != nil {
 		t.Fatalf("parseM3U error: %v", err)
 	}
@@ -131,7 +103,7 @@ func TestParseM3URadioStream(t *testing.T) {
 #EXTINF:-1,Radio Station
 http://radio.example.com/stream
 `
-	entries, err := parseM3U(strings.NewReader(input), "")
+	entries, err := parseM3U(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("parseM3U error: %v", err)
 	}

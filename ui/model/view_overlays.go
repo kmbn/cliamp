@@ -88,7 +88,6 @@ func (m Model) renderThemePicker() string {
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
 
-
 func (m Model) renderInfoOverlay() string {
 	track, _ := m.playlist.Current()
 
@@ -219,4 +218,3 @@ func (m Model) renderStationsOverlay() string {
 
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
-

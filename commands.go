@@ -11,7 +11,6 @@ import (
 	cli "github.com/urfave/cli/v3"
 
 	"cliamp/applog"
-	"cliamp/cmd"
 	"cliamp/config"
 	"cliamp/ipc"
 	"cliamp/player"
@@ -59,7 +58,6 @@ func buildApp() *cli.Command {
 		},
 		Commands: []*cli.Command{
 			upgradeCommand(),
-			historyCommand(),
 			ipcSimpleCommand("play", "resume playback"),
 			ipcSimpleCommand("pause", "pause playback"),
 			ipcSimpleCommand("toggle", "play/pause toggle"),
@@ -68,7 +66,6 @@ func buildApp() *cli.Command {
 			ipcSimpleCommand("stop", "stop playback"),
 			statusCommand(),
 			volumeCommand(),
-			seekCommand(),
 			themeCommand(),
 			visCommand(),
 			shuffleCommand(),
@@ -178,32 +175,6 @@ func upgradeCommand() *cli.Command {
 	}
 }
 
-func historyCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "history",
-		Usage: "show recently played tracks",
-		Description: "Lists tracks that have been played past the scrobble threshold.\n" +
-			"Browse the same data inside the TUI under Local Playlists →\n" +
-			"\"Recently Played\".",
-		Flags: []cli.Flag{
-			&cli.IntFlag{Name: "limit", Usage: "max entries to show (0 = all)", Value: 50},
-			&cli.BoolFlag{Name: "json", Usage: "machine-readable JSON output"},
-		},
-		Action: func(ctx context.Context, c *cli.Command) error {
-			return cmd.HistoryShow(int(c.Int("limit")), c.Bool("json"))
-		},
-		Commands: []*cli.Command{
-			{
-				Name:  "clear",
-				Usage: "delete the history file",
-				Action: func(ctx context.Context, c *cli.Command) error {
-					return cmd.HistoryClear()
-				},
-			},
-		},
-	}
-}
-
 // ipcSimpleCommand creates a fire-and-forget IPC command (play, pause, etc.).
 func ipcSimpleCommand(name, usage string) *cli.Command {
 	return &cli.Command{
@@ -290,25 +261,6 @@ func volumeCommand() *cli.Command {
 				return fmt.Errorf("invalid volume value %q", c.Args().First())
 			}
 			_, err = ipcSend(ipc.Request{Cmd: "volume", Value: db})
-			return err
-		},
-	}
-}
-
-func seekCommand() *cli.Command {
-	return &cli.Command{
-		Name:      "seek",
-		Usage:     "seek to position in seconds",
-		ArgsUsage: "<seconds>",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			if c.Args().Len() == 0 {
-				return fmt.Errorf("usage: cliamp seek <seconds>")
-			}
-			secs, err := strconv.ParseFloat(c.Args().First(), 64)
-			if err != nil {
-				return fmt.Errorf("invalid seek value %q", c.Args().First())
-			}
-			_, err = ipcSend(ipc.Request{Cmd: "seek", Value: secs})
 			return err
 		},
 	}

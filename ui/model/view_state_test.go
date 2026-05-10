@@ -42,7 +42,6 @@ func TestMainViewShrinksPlaylistForFooterMessages(t *testing.T) {
 		plVisible: 3,
 	}
 	m.vis.Mode = ui.VisNone
-	m.save.startDownload()
 	m.status.Show("Saved", statusTTLDefault)
 	m.height = m.mainFrameFixedLines(true) + 1
 
@@ -53,7 +52,6 @@ func TestMainViewShrinksPlaylistForFooterMessages(t *testing.T) {
 		t.Fatalf("View() height = %d, want <= %d after footer lines shrink playlist", got, m.height)
 	}
 }
-
 
 func TestViewConsumesInitialVisualizerRefresh(t *testing.T) {
 	if sharedPlayer == nil {

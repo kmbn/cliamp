@@ -136,27 +136,6 @@ func TestClampPadding(t *testing.T) {
 	}
 }
 
-func TestClampSeekStepLarge(t *testing.T) {
-	tests := []struct {
-		input int
-		want  int
-	}{
-		{30, 30},
-		{1, 6},
-		{700, 600},
-		{6, 6},
-		{600, 600},
-	}
-	for _, tt := range tests {
-		cfg := defaultConfig()
-		cfg.SeekStepLarge = tt.input
-		cfg.clamp()
-		if cfg.SeekStepLarge != tt.want {
-			t.Errorf("SeekStepLarge(%d) = %d, want %d", tt.input, cfg.SeekStepLarge, tt.want)
-		}
-	}
-}
-
 func TestParseEQ(t *testing.T) {
 	tests := []struct {
 		name string

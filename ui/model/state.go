@@ -28,16 +28,6 @@ type provSearchState struct {
 	cursor  int
 }
 
-// seekState holds debounce state for yt-dlp seek-by-restart.
-type seekState struct {
-	active    bool          // true from first keypress until seek completes
-	targetPos time.Duration // absolute target position
-	timer     int           // tick countdown for debounce (0 = idle)
-	grace     int           // ticks to suppress reconnect after seek completes
-	timerFor  time.Duration
-	graceFor  time.Duration
-}
-
 // themePickerState holds state for the theme picker overlay.
 type themePickerState struct {
 	visible  bool
@@ -78,25 +68,6 @@ type devicePickerState struct {
 	devices []player.AudioDevice
 	cursor  int
 	loading bool
-}
-
-type saveState struct {
-	pendingDownloads int
-}
-
-func (s saveState) activityText() string {
-	switch s.pendingDownloads {
-	case 0:
-		return ""
-	case 1:
-		return "Downloading..."
-	default:
-		return fmt.Sprintf("Downloading... (%d)", s.pendingDownloads)
-	}
-}
-
-func (s *saveState) startDownload() {
-	s.pendingDownloads++
 }
 
 // statusTTL is how long a status line stays visible.

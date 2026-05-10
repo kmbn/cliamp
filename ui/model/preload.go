@@ -4,8 +4,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
-	"cliamp/playlist"
 )
 
 // streamPreloadLeadTime is how far before the end of a stream we arm the
@@ -16,11 +14,6 @@ import (
 // most servers won't enforce a concurrency limit for such a brief overlap,
 // and any resulting early skip is imperceptible (≤3 s from the true end).
 const streamPreloadLeadTime = 3 * time.Second
-
-// ytdlPreloadLeadTime is the lead time used for yt-dlp (YouTube/SoundCloud)
-// URLs. These need longer because spinning up the yt-dlp | ffmpeg pipe chain
-// takes 3-10 seconds, so we start preloading much earlier.
-const ytdlPreloadLeadTime = 15 * time.Second
 
 // preloadNext looks ahead in the playlist and preloads the next track for
 // gapless transition. Errors are silently ignored — playback falls back to
@@ -37,19 +30,6 @@ func (m *Model) preloadNext() tea.Cmd {
 	next, ok := m.playlist.PeekNext()
 	if !ok {
 		return nil
-	}
-	// Preload yt-dlp tracks with the same lead-time deferral as HTTP streams.
-	if playlist.IsYTDL(next.Path) {
-		dur := m.player.Duration()
-		if dur > 0 {
-			remaining := dur - m.player.Position()
-			if remaining > ytdlPreloadLeadTime {
-				return nil
-			}
-		}
-		nextDur := time.Duration(next.DurationSecs) * time.Second
-		m.preloading = true
-		return preloadYTDLStreamCmd(m.player, next.Path, nextDur)
 	}
 	if next.Stream {
 		// For streams, only arm gapless if we're within the lead-time window.

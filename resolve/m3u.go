@@ -3,7 +3,6 @@ package resolve
 import (
 	"bufio"
 	"io"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -28,7 +27,7 @@ const (
 	scannerMaxLineSize = 1024 * 1024 // max line length — handles large EXTINF/JSON metadata
 )
 
-func parseM3U(r io.Reader, baseDir string) ([]m3uEntry, error) {
+func parseM3U(r io.Reader) ([]m3uEntry, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, scannerInitBufSize), scannerMaxLineSize)
 	var entries []m3uEntry
@@ -71,9 +70,6 @@ func parseM3U(r io.Reader, baseDir string) ([]m3uEntry, error) {
 
 		// This is a path/URL line.
 		path := line
-		if baseDir != "" && !playlist.IsURL(path) && !filepath.IsAbs(path) {
-			path = filepath.Join(baseDir, path)
-		}
 
 		if pending != nil {
 			pending.Path = path

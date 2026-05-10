@@ -21,9 +21,6 @@ var keymapEntries = []keymapEntry{
 	{key: "s", action: "Stop"},
 	{key: "> .", action: "Next track"},
 	{key: "< ,", action: "Previous track"},
-	{key: "← →", action: "Seek ±5s"},
-	{key: "Shift+← →", action: "Seek ±large step"},
-	{key: "Nj", action: "Seek to N×10% of track (e.g. 7j = 70%)"},
 	{key: "+ -", action: "Volume up/down"},
 	{key: "] [", action: "Speed up/down (±0.25x)"},
 	{key: "z", action: "Toggle shuffle"},
@@ -43,20 +40,10 @@ var keymapEntries = []keymapEntry{
 	{key: "A", action: "Queue manager"},
 	{key: "x", action: "Remove selected track from playlist"},
 	{key: "o", action: "Open file browser"},
-	{key: "N", action: "Navidrome browser"},
-	{key: "L", action: "Browse local playlists"},
 	{key: "R", action: "Open radio provider"},
-	{key: "S", action: "Open Spotify provider"},
-	{key: "P", action: "Open Plex provider"},
-	{key: "Y", action: "Open YouTube provider"},
-	{key: "C", action: "Open SoundCloud provider"},
-	{key: "J", action: "Open Jellyfin provider"},
-	{key: "E", action: "Open Emby provider"},
-	{key: "Ctrl+J", action: "Jump to time"},
 	{key: "p", action: "Playlist manager"},
 	{key: "Ctrl+H", action: "Toggle album headers"},
 	{key: "i", action: "Track info / metadata"},
-	{key: "Ctrl+S", action: "Save/download track to ~/Music"},
 	{key: "Ctrl+X", action: "Expand/collapse view"},
 	{key: "/", action: "Filter/search list"},
 	{key: "f", action: "Toggle bookmark ★ (or favorite station in radio)"},
@@ -81,15 +68,12 @@ var coreReservedKeys = []string{
 
 	// Playback.
 	"space", "s", ">", ".", "<", ",",
-	"left", "right", "shift+left", "shift+right",
+	"left", "right",
 	"+", "=", "-", "]", "[",
 	"f",
 
-	// Percentage seek primes on digits 0-9 and consumes the following `j`.
-	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "j",
-
 	// Navigation and focus.
-	"up", "k", "down",
+	"up", "k", "down", "j",
 	"shift+up", "shift+down",
 	"pgup", "pgdown", "ctrl+u", "ctrl+d",
 	"g", "G", "home", "end",
@@ -97,9 +81,9 @@ var coreReservedKeys = []string{
 
 	// Features.
 	"r", "z", "m", "e", "a", "A", "ctrl+h",
-	"ctrl+s", "S", "/", "ctrl+f",
-	"ctrl+j", "J", "E", "p", "t", "i", "y", "o", "u",
-	"N", "L", "R", "P", "Y", "C",
+	"/", "ctrl+f",
+	"p", "t", "i", "y", "o", "u",
+	"R",
 	"v", "V", "ctrl+x", "x", "d", "ctrl+k", "?",
 	"ctrl+r",
 }

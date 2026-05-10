@@ -14,7 +14,6 @@ import (
 	"cliamp/external/radio"
 	"cliamp/internal/appdir"
 	"cliamp/internal/appmeta"
-	"cliamp/internal/resume"
 	"cliamp/ipc"
 	"cliamp/mediactl"
 	"cliamp/player"
@@ -101,8 +100,6 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 
 	m := model.New(p, pl, providers, "radio", nil, themes, config.SaveFunc{})
 
-	m.SetSeekStepLarge(cfg.SeekStepLargeDuration())
-	m.SetInitialDirectory(cfg.InitialDirectory)
 	m.SetPendingURLs(resolved.Pending)
 	if len(resolved.Tracks) == 0 && len(resolved.Pending) == 0 && pl.Len() == 0 {
 		m.StartInProvider()
@@ -121,12 +118,6 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 	}
 	if cfg.Compact {
 		m.SetCompact(true)
-	}
-
-	if len(positional) > 0 {
-		if rs := resume.Load(); rs.Path != "" && rs.PositionSec > 0 {
-			m.SetResume(rs.Path, rs.PositionSec)
-		}
 	}
 
 	prog := tea.NewProgram(m)
@@ -154,10 +145,6 @@ func run(overrides config.Overrides, positional []string, daemon bool) error {
 			themeName = ""
 		}
 		_ = config.Save("theme", fmt.Sprintf("%q", themeName))
-
-		if path, secs, pl := fm.ResumeState(); path != "" && secs > 0 {
-			resume.Save(path, secs, pl)
-		}
 	}
 
 	return nil

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -57,13 +56,6 @@ type feedTrackResolvedMsg struct {
 	tracks []playlist.Track
 }
 
-// netSearchResultsMsg carries the result set of a yt-dlp/sc-dlp search query
-// so the UI can present a picker rather than auto-queuing.
-type netSearchResultsMsg struct {
-	tracks []playlist.Track
-	err    error
-}
-
 // streamPlayedMsg signals that async stream Play() completed.
 type streamPlayedMsg struct{ err error }
 
@@ -71,21 +63,6 @@ type streamPlayedMsg struct{ err error }
 type streamPreloadedMsg struct{}
 
 type attachNotifierMsg struct{ notifier playback.Notifier }
-
-// — Navidrome browser message types —
-
-// navArtistsLoadedMsg carries the full artist list from a provider browser.
-type navArtistsLoadedMsg []provider.ArtistInfo
-
-// navAlbumsLoadedMsg carries one page of albums and the fetch offset.
-type navAlbumsLoadedMsg struct {
-	albums []provider.AlbumInfo
-	offset int  // the offset this page was requested at
-	isLast bool // true when the server returned fewer than the requested page size
-}
-
-// navTracksLoadedMsg carries the track list from a provider.AlbumTrackLoader.
-type navTracksLoadedMsg []playlist.Track
 
 // provAuthDoneMsg signals that interactive provider authentication completed.
 type provAuthDoneMsg struct{ err error }
@@ -147,13 +124,6 @@ func resolveRemoteCmd(urls []string, autoPlay bool) tea.Cmd {
 	}
 }
 
-func fetchNetSearchCmd(query string) tea.Cmd {
-	return func() tea.Msg {
-		tracks, err := resolve.Remote([]string{query})
-		return netSearchResultsMsg{tracks: tracks, err: err}
-	}
-}
-
 func playStreamCmd(p player.Engine, path string, knownDuration time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		return streamPlayedMsg{err: p.Play(path, knownDuration)}
@@ -170,19 +140,6 @@ func preloadStreamCmd(p player.Engine, path string, knownDuration time.Duration)
 func preloadLocalCmd(p player.Engine, path string, knownDuration time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		p.Preload(path, knownDuration)
-		return streamPreloadedMsg{}
-	}
-}
-
-func playYTDLStreamCmd(p player.Engine, pageURL string, knownDuration time.Duration) tea.Cmd {
-	return func() tea.Msg {
-		return streamPlayedMsg{err: p.PlayYTDL(pageURL, knownDuration)}
-	}
-}
-
-func preloadYTDLStreamCmd(p player.Engine, pageURL string, knownDuration time.Duration) tea.Cmd {
-	return func() tea.Msg {
-		p.PreloadYTDL(pageURL, knownDuration) // errors silently ignored
 		return streamPreloadedMsg{}
 	}
 }
@@ -229,53 +186,6 @@ func resolveWrapperURLs(tracks []playlist.Track) []playlist.Track {
 	return out
 }
 
-const navAlbumPageSize = 100
-
-func fetchNavArtistsCmd(b provider.ArtistBrowser) tea.Cmd {
-	return func() tea.Msg {
-		artists, err := b.Artists()
-		if err != nil {
-			return err
-		}
-		return navArtistsLoadedMsg(artists)
-	}
-}
-
-func fetchNavArtistAlbumsCmd(b provider.ArtistBrowser, artistID string) tea.Cmd {
-	return func() tea.Msg {
-		albums, err := b.ArtistAlbums(artistID)
-		if err != nil {
-			return err
-		}
-		// Artist album lists are complete in one call — treat as last page.
-		return navAlbumsLoadedMsg{albums: albums, offset: 0, isLast: true}
-	}
-}
-
-func fetchNavAlbumListCmd(b provider.AlbumBrowser, sortType string, offset int) tea.Cmd {
-	return func() tea.Msg {
-		albums, err := b.AlbumList(sortType, offset, navAlbumPageSize)
-		if err != nil {
-			return err
-		}
-		return navAlbumsLoadedMsg{
-			albums: albums,
-			offset: offset,
-			isLast: len(albums) < navAlbumPageSize,
-		}
-	}
-}
-
-func fetchNavAlbumTracksCmd(l provider.AlbumTrackLoader, albumID string) tea.Cmd {
-	return func() tea.Msg {
-		tracks, err := l.AlbumTracks(albumID)
-		if err != nil {
-			return err
-		}
-		return navTracksLoadedMsg(tracks)
-	}
-}
-
 // catalogSearchMsg carries the result of a provider.CatalogSearcher.SearchCatalog call.
 type catalogSearchMsg struct {
 	count int
@@ -304,65 +214,5 @@ func fetchCatalogBatchCmd(loader provider.CatalogLoader, offset, limit int) tea.
 	return func() tea.Msg {
 		added, err := loader.LoadCatalogPage(offset, limit)
 		return catalogBatchMsg{added: added, err: err}
-	}
-}
-
-// — Spotify search + add-to-playlist messages —
-
-type spotSearchResultsMsg struct {
-	tracks []playlist.Track
-	err    error
-}
-
-type spotPlaylistsMsg struct {
-	playlists []playlist.PlaylistInfo
-	err       error
-}
-
-type spotAddedMsg struct {
-	name string
-	err  error
-}
-
-type spotCreatedMsg struct {
-	name string
-	err  error
-}
-
-func fetchSpotSearchCmd(s provider.Searcher, query string) tea.Cmd {
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		tracks, err := s.SearchTracks(ctx, query, 20)
-		return spotSearchResultsMsg{tracks: tracks, err: err}
-	}
-}
-
-func fetchSpotPlaylistsCmd(prov playlist.Provider) tea.Cmd {
-	return func() tea.Msg {
-		playlists, err := prov.Playlists()
-		return spotPlaylistsMsg{playlists: playlists, err: err}
-	}
-}
-
-func addToSpotPlaylistCmd(w provider.PlaylistWriter, playlistID string, track playlist.Track, name string) tea.Cmd {
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		err := w.AddTrackToPlaylist(ctx, playlistID, track)
-		return spotAddedMsg{name: name, err: err}
-	}
-}
-
-func createSpotPlaylistCmd(c provider.PlaylistCreator, w provider.PlaylistWriter, name string, track playlist.Track) tea.Cmd {
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		id, err := c.CreatePlaylist(ctx, name)
-		if err != nil {
-			return spotCreatedMsg{name: name, err: err}
-		}
-		err = w.AddTrackToPlaylist(ctx, id, track)
-		return spotCreatedMsg{name: name, err: err}
 	}
 }

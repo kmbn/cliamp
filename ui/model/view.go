@@ -55,10 +55,6 @@ func (m Model) renderProviderEmptyState(budget int) string {
 		dimStyle.Render(fmt.Sprintf("  No playlists in %s.", name)),
 		"",
 	}
-	if _, searchable := m.provider.(provider.Searcher); searchable {
-		lines = append(lines,
-			dimStyle.Render("  Press ")+helpKeyStyle.Render(" Ctrl+F ")+dimStyle.Render(" to search."))
-	}
 	if m.provider != nil {
 		if hint, ok := providerEmptyStateHint[strings.ToLower(m.provider.Name())]; ok {
 			lines = append(lines, dimStyle.Render("  "+hint))
@@ -84,9 +80,6 @@ func (m Model) providerRowStyle(p playlist.PlaylistInfo, isCursor bool) (string,
 // tracks are currently loaded into the player.
 func (m Model) isProviderRowActive(p playlist.PlaylistInfo) bool {
 	if m.activeProviderPlaylistID != "" && m.activeProviderPlaylistID == p.ID {
-		return true
-	}
-	if m.loadedPlaylist != "" && m.loadedPlaylist == p.Name {
 		return true
 	}
 	return false
@@ -201,9 +194,6 @@ func (m Model) mainSections(includeTransient bool) []string {
 
 func (m Model) footerMessages() []string {
 	var lines []string
-	if text := m.save.activityText(); text != "" {
-		lines = append(lines, statusStyle.Render(text))
-	}
 	if m.status.text != "" {
 		lines = append(lines, statusStyle.Render(m.status.text))
 	}
@@ -344,8 +334,7 @@ func (m Model) renderTimeStatus() string {
 
 	var status string
 	switch {
-	case m.seek.active:
-		status = statusStyle.Render("⟳ Seeking...")
+
 	case m.buffering:
 		if elapsed := int(time.Since(m.bufferingAt).Seconds()); elapsed > 0 {
 			status = statusStyle.Render(fmt.Sprintf("◌ Buffering... (%ds)", elapsed))
@@ -682,13 +671,6 @@ func (m Model) renderHelp() string {
 			helpHint{helpKey("Enter", "Play "), 100},
 			helpHint{helpKey("Spc", "▶❚❚ "), 90},
 		)
-		track, _ := m.playlist.Current()
-		if !track.Stream || m.player.Seekable() {
-			hints = append(hints, helpHint{helpKey("←→", "Seek "), 80})
-		}
-		if m.loadedPlaylist != "" {
-			hints = append(hints, helpHint{helpKey("f", "Bookmark "), 75})
-		}
 		hints = append(hints,
 			helpHint{helpKey("Tab", "Focus "), 70},
 			helpHint{helpKey("Ctrl+K", "Keys"), 100},

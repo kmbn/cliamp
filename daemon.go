@@ -11,7 +11,6 @@ import (
 
 	"cliamp/applog"
 	"cliamp/internal/playback"
-	"cliamp/internal/resume"
 	"cliamp/ipc"
 	"cliamp/player"
 	"cliamp/playlist"
@@ -51,7 +50,6 @@ func runDaemon(p *player.Player, pl *playlist.Playlist, autoPlay bool) error {
 		select {
 		case <-sigCh:
 			applog.Info("daemon: signal received, shutting down")
-			d.saveResume()
 			return nil
 		case <-ticker.C:
 			d.tick()
@@ -99,9 +97,6 @@ func (d *daemon) Send(msg any) {
 
 	case ipc.VolumeMsg:
 		d.player.SetVolume(m.DB)
-
-	case ipc.SeekMsg:
-		_ = d.player.Seek(m.Offset)
 
 	case ipc.LoadMsg:
 		d.handleLoad(m)
@@ -201,10 +196,6 @@ func (d *daemon) prevTrack() {
 	if d.player.Position() > 3*time.Second {
 		track, idx := d.playlist.Current()
 		if idx < 0 {
-			return
-		}
-		if d.player.Seekable() {
-			_ = d.player.Seek(-d.player.Position())
 			return
 		}
 		d.playTrack(track)
@@ -319,20 +310,6 @@ func (d *daemon) statusResponse() ipc.Response {
 	resp.Mono = &mono
 	resp.Speed = d.player.Speed()
 	return resp
-}
-
-func (d *daemon) saveResume() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	track, idx := d.playlist.Current()
-	if idx < 0 || track.Path == "" {
-		return
-	}
-	pos := int(d.player.Position().Seconds())
-	if pos <= 0 {
-		return
-	}
-	resume.Save(track.Path, pos, "")
 }
 
 func reply(ch chan ipc.Response, resp ipc.Response) {

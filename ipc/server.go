@@ -162,10 +162,6 @@ func (s *Server) dispatch(req Request) Response {
 		s.disp.Send(VolumeMsg{DB: req.Value})
 		return Response{OK: true}
 
-	case "seek":
-		s.disp.Send(SeekMsg{Offset: time.Duration(req.Value * float64(time.Second))})
-		return Response{OK: true}
-
 	case "load":
 		if req.Playlist == "" {
 			return Response{OK: false, Error: "load requires a playlist name"}

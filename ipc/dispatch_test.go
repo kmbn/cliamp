@@ -2,7 +2,6 @@ package ipc
 
 import (
 	"testing"
-	"time"
 
 	"cliamp/internal/playback"
 )
@@ -117,22 +116,6 @@ func TestDispatchVolume(t *testing.T) {
 	}
 	if got.DB != -3.5 {
 		t.Errorf("DB = %f, want -3.5", got.DB)
-	}
-}
-
-func TestDispatchSeek(t *testing.T) {
-	disp := &captureDispatcher{}
-	s := newTestServer(disp)
-	resp := s.dispatch(Request{Cmd: "seek", Value: 1.5})
-	if !resp.OK {
-		t.Fatalf("OK = false, err=%q", resp.Error)
-	}
-	got, ok := disp.last.(SeekMsg)
-	if !ok {
-		t.Fatalf("got %T, want SeekMsg", disp.last)
-	}
-	if got.Offset != 1500*time.Millisecond {
-		t.Errorf("Offset = %v, want 1.5s", got.Offset)
 	}
 }
 

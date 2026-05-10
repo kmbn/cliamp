@@ -102,20 +102,7 @@ func plsEntriesToTracks(entries []plsEntry) []playlist.Track {
 			Realtime: true,
 		}}
 	}
-
-	tracks := make([]playlist.Track, 0, len(entries))
-	for _, e := range entries {
-		if e.Title != "" {
-			tracks = append(tracks, playlist.Track{
-				Path:   e.File,
-				Title:  e.Title,
-				Stream: playlist.IsURL(e.File),
-			})
-		} else {
-			tracks = append(tracks, playlist.TrackFromPath(e.File))
-		}
-	}
-	return tracks
+	return nil
 }
 
 // allStreams reports whether every PLS entry is an HTTP stream URL.

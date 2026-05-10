@@ -2,11 +2,9 @@ package model
 
 import (
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
-	"cliamp/history"
 	"cliamp/player"
 	"cliamp/playlist"
 	"cliamp/theme"
@@ -25,17 +23,15 @@ func applyThemeAll(t theme.Theme) {
 // localProv is an optional direct reference to the local provider for write ops.
 func New(p player.Engine, pl *playlist.Playlist, providers []ProviderEntry, defaultProvider string, localProv playlist.Provider, themes []theme.Theme, cs ConfigSaver) Model {
 	m := Model{
-		player:        p,
-		playlist:      pl,
-		configSaver:   cs,
-		vis:           ui.NewVisualizer(float64(p.SampleRate())),
-		seekStepLarge: 30 * time.Second,
-		plVisible:     5,
-		eqPresetIdx:   -1, // custom until a preset is selected
-		themes:        themes,
-		themeIdx:      -1, // Default (ANSI)
-		providers:     providers,
-		historyStore:  history.New(),
+		player:      p,
+		playlist:    pl,
+		configSaver: cs,
+		vis:         ui.NewVisualizer(float64(p.SampleRate())),
+		plVisible:   5,
+		eqPresetIdx: -1, // custom until a preset is selected
+		themes:      themes,
+		themeIdx:    -1, // Default (ANSI)
+		providers:   providers,
 	}
 	m.termTitle = initialTerminalTitleState()
 	// Select the default provider pill.
@@ -76,21 +72,6 @@ func (m *Model) SetAutoPlay(v bool) { m.autoPlay = v }
 // SetCompact enables compact mode which caps the frame width at 80 columns.
 func (m *Model) SetCompact(v bool) { m.compact = v }
 
-// SetInitialDirectory sets the initial directory for the file browser.
-func (m *Model) SetInitialDirectory(dir string) { m.initialDir = dir }
-
-// SetSeekStepLarge configures the Shift+Left/Right seek jump amount.
-func (m *Model) SetSeekStepLarge(d time.Duration) {
-	switch {
-	case d <= 0:
-		m.seekStepLarge = 30 * time.Second
-	case d <= 5*time.Second:
-		m.seekStepLarge = 6 * time.Second
-	default:
-		m.seekStepLarge = d
-	}
-}
-
 // SetTheme finds a theme by name and applies it. Returns true if found.
 func (m *Model) SetTheme(name string) bool {
 	if name == "" || strings.EqualFold(name, "default") {
@@ -124,24 +105,6 @@ func (m *Model) SetVisualizer(name string) bool {
 // VisualizerName returns the current visualizer mode's display name.
 func (m *Model) VisualizerName() string {
 	return m.vis.ModeName()
-}
-
-// SetResume registers a path+position to seek to when that track first plays.
-func (m *Model) SetResume(path string, secs int) {
-	m.resume.path = path
-	m.resume.secs = secs
-}
-
-// ResumePlaylist loads a playlist into the model for session resume.
-func (m *Model) ResumePlaylist(name string, tracks []playlist.Track) {
-	m.playlist.Replace(tracks)
-	m.loadedPlaylist = name
-}
-
-// ResumeState returns the track path, playback position, and playlist name captured at exit.
-// Called after prog.Run() returns (player already closed).
-func (m Model) ResumeState() (path string, secs int, playlist string) {
-	return m.exitResume.path, m.exitResume.secs, m.exitResume.playlist
 }
 
 // ThemeName returns the current theme name.

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"cliamp/internal/appdir"
 )
@@ -65,24 +64,22 @@ func isEnvName(s string) bool {
 
 // Config holds user preferences loaded from the config file.
 type Config struct {
-	Volume           float64     // dB, range [-30, +6]
-	EQ               [10]float64 // per-band gain in dB, range [-12, +12]
-	EQPreset         string      // preset name, or "" for custom
-	Mono             bool
-	AutoPlay         bool                         // start playback automatically on launch (radio streams, CLI tracks)
-	SeekStepLarge    int                          // seconds for Shift+Left/Right seek jumps
-	Theme            string                       // theme name, or "" for ANSI default
-	Visualizer       string                       // visualizer mode name, or "" for default (Bars)
-	SampleRate       int                          // output sample rate: 22050, 44100, 48000, 96000, 192000
-	BufferMs         int                          // speaker buffer in milliseconds (50–500)
-	ResampleQuality  int                          // beep resample quality factor (1–4)
-	BitDepth         int                          // PCM bit depth for FFmpeg output: 16 or 32
-	Compact          bool                         // compact mode: cap frame width at 80 columns
-	PaddingH         int                          // horizontal padding for the UI frame (default 3)
-	PaddingV         int                          // vertical padding for the UI frame (default 1)
-	AudioDevice      string                       // preferred audio output device name (empty = system default)
-	InitialDirectory string                       // initial directory for the file browser
-	LogLevel         string                       // log level: debug, info, warn, error (default "info")
+	Volume          float64     // dB, range [-30, +6]
+	EQ              [10]float64 // per-band gain in dB, range [-12, +12]
+	EQPreset        string      // preset name, or "" for custom
+	Mono            bool
+	AutoPlay        bool   // start playback automatically on launch (radio streams, CLI tracks)
+	Theme           string // theme name, or "" for ANSI default
+	Visualizer      string // visualizer mode name, or "" for default (Bars)
+	SampleRate      int    // output sample rate: 22050, 44100, 48000, 96000, 192000
+	BufferMs        int    // speaker buffer in milliseconds (50–500)
+	ResampleQuality int    // beep resample quality factor (1–4)
+	BitDepth        int    // PCM bit depth for FFmpeg output: 16 or 32
+	Compact         bool   // compact mode: cap frame width at 80 columns
+	PaddingH        int    // horizontal padding for the UI frame (default 3)
+	PaddingV        int    // vertical padding for the UI frame (default 1)
+	AudioDevice     string // preferred audio output device name (empty = system default)
+	LogLevel        string // log level: debug, info, warn, error (default "info")
 }
 
 // defaultConfig returns a Config with sensible defaults.
@@ -92,7 +89,6 @@ type Config struct {
 func defaultConfig() Config {
 	return Config{
 		AutoPlay:        false,
-		SeekStepLarge:   30,
 		SampleRate:      0,
 		BufferMs:        100,
 		ResampleQuality: 4,
@@ -155,10 +151,6 @@ func Load() (Config, error) {
 			cfg.Mono = val == "true"
 		case "auto_play":
 			cfg.AutoPlay = val == "true"
-		case "seek_large_step_sec":
-			if v, err := strconv.Atoi(val); err == nil {
-				cfg.SeekStepLarge = v
-			}
 		case "eq":
 			cfg.EQ = parseEQ(val)
 		case "eq_preset":
@@ -187,8 +179,6 @@ func Load() (Config, error) {
 			cfg.Compact = val == "true"
 		case "audio_device":
 			cfg.AudioDevice = parseString(val)
-		case "initial_directory":
-			cfg.InitialDirectory = parseString(val)
 		case "padding_horizontal":
 			if v, err := strconv.Atoi(val); err == nil {
 				cfg.PaddingH = v
@@ -293,15 +283,9 @@ func (c Config) ApplyPlayer(p PlayerConfig) {
 	}
 }
 
-// SeekStepLargeDuration returns the configured Shift+Left/Right seek jump.
-func (c Config) SeekStepLargeDuration() time.Duration {
-	return time.Duration(c.SeekStepLarge) * time.Second
-}
-
 // clamp constrains all Config fields to their valid ranges.
 func (c *Config) clamp() {
 	c.Volume = max(min(c.Volume, 6), -30)
-	c.SeekStepLarge = max(min(c.SeekStepLarge, 600), 6)
 	c.SampleRate = clampSampleRate(c.SampleRate)
 	c.BufferMs = max(min(c.BufferMs, 500), 50)
 	c.ResampleQuality = max(min(c.ResampleQuality, 4), 1)
