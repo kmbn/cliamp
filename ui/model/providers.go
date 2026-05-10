@@ -72,7 +72,7 @@ func providerKeyForShortcut(key string) string {
 		return "yt"
 	case "L":
 		return "local"
-	case "R":
+	case "r":
 		return "radio"
 	}
 	return ""

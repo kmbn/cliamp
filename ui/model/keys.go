@@ -236,7 +236,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		case "G", "end":
 			m.providerToBottom()
 			return m.maybeLoadCatalogBatch()
-		case "R":
+		case "r":
 			return m.switchToProvider("radio")
 		case "ctrl+x":
 			m.toggleExpandedView()
@@ -454,7 +454,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.urlInputting = true
 		m.urlInput = ""
 
-	case "R":
+	case "r":
 		return m.switchToProvider("radio")
 
 	case "v":

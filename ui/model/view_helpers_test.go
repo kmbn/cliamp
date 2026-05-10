@@ -101,7 +101,7 @@ func TestProviderKeyForShortcut(t *testing.T) {
 		"J": "jellyfin",
 		"Y": "yt",
 		"L": "local",
-		"R": "radio",
+		"r": "radio",
 		"x": "",
 		"":  "",
 	}
