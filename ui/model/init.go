@@ -50,22 +50,6 @@ func New(p player.Engine, pl *playlist.Playlist, providers []ProviderEntry, defa
 	return m
 }
 
-// findProviderWith returns the first registered provider that satisfies the
-// given capability check. This is used for cross-provider shortcuts like "N"
-// (browse) and "F" (search) which should work regardless of the active provider.
-func (m *Model) findProviderWith(check func(playlist.Provider) bool) playlist.Provider {
-	// Prefer the active provider if it matches.
-	if check(m.provider) {
-		return m.provider
-	}
-	for _, pe := range m.providers {
-		if pe.Provider != nil && check(pe.Provider) {
-			return pe.Provider
-		}
-	}
-	return nil
-}
-
 // SetAutoPlay makes the player start playback immediately on Init.
 func (m *Model) SetAutoPlay(v bool) { m.autoPlay = v }
 

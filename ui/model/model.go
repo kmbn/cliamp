@@ -27,23 +27,6 @@ const (
 	focusProvider
 )
 
-func (f focusArea) label() string {
-	switch f {
-	case focusPlaylist:
-		return "Playlist"
-	case focusEQ:
-		return "Equalizer"
-	case focusProvPill:
-		return "Source"
-	case focusProvider:
-		return "Provider"
-	case focusSearch:
-		return "Search"
-	default:
-		return ""
-	}
-}
-
 type topLevelScreen int
 
 const (

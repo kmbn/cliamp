@@ -47,10 +47,6 @@ var (
 				Foreground(ui.ColorAccent).
 				Bold(true)
 
-	playlistUnavailableStyle = lipgloss.NewStyle().
-					Foreground(ui.ColorDim).
-					Faint(true)
-
 	helpStyle = lipgloss.NewStyle().
 			Foreground(ui.ColorDim)
 
@@ -76,7 +72,6 @@ func rebuildModelStyles() {
 	playlistActiveStyle = lipgloss.NewStyle().Foreground(ui.ColorPlaying).Bold(true)
 	playlistItemStyle = lipgloss.NewStyle().Foreground(ui.ColorText)
 	playlistSelectedStyle = lipgloss.NewStyle().Foreground(ui.ColorAccent).Bold(true)
-	playlistUnavailableStyle = lipgloss.NewStyle().Foreground(ui.ColorDim).Faint(true)
 	helpStyle = lipgloss.NewStyle().Foreground(ui.ColorDim)
 	helpKeyStyle = lipgloss.NewStyle().Foreground(ui.ColorKeyFG).Background(ui.ColorKeyBG).Bold(true)
 	errorStyle = lipgloss.NewStyle().Foreground(ui.ColorError)

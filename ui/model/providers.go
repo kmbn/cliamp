@@ -42,18 +42,6 @@ func (m *Model) switchProvider(idx int) tea.Cmd {
 	return fetchPlaylistsCmd(m.provider)
 }
 
-// quickSwitchProvider closes any browser overlays and jumps to the provider
-// matched by key. Use the same Shift+letter shortcuts that switch providers
-// from the main pane (S, N, P, J, Y, R, L). Returns nil when the key doesn't
-// match a known provider.
-func (m *Model) quickSwitchProvider(key string) tea.Cmd {
-	provKey := providerKeyForShortcut(key)
-	if provKey == "" {
-		return nil
-	}
-	return m.switchToProvider(provKey)
-}
-
 // providerKeyForShortcut maps the Shift+letter provider shortcuts to the
 // config key used by switchToProvider, or "" when the key is unrelated.
 func providerKeyForShortcut(key string) string {

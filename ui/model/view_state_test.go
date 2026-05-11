@@ -1,7 +1,6 @@
 package model
 
 import (
-	"regexp"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -122,10 +121,4 @@ func TestFullVisualizerViewFitsTerminalWidth(t *testing.T) {
 	if got := lipgloss.Width(m.View().Content); got > m.width {
 		t.Fatalf("View() width = %d, want <= %d in full visualizer mode", got, m.width)
 	}
-}
-
-var ansi = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
-
-func stripAnsi(str string) string {
-	return ansi.ReplaceAllString(str, "")
 }

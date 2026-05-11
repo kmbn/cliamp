@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -182,19 +181,6 @@ func wireMediaCtl(prog *tea.Program) (*mediactl.Service, error) {
 
 func ipcSend(req ipc.Request) (ipc.Response, error) {
 	resp, err := ipc.Send(ipc.DefaultSocketPath(), req)
-	if err != nil {
-		return resp, err
-	}
-	if !resp.OK {
-		return resp, fmt.Errorf("%s", resp.Error)
-	}
-	return resp, nil
-}
-
-// ipcSendLong is like ipcSend with a caller-chosen deadline, for plugin
-// commands that can legitimately run for minutes (e.g. yt-dlp downloads).
-func ipcSendLong(req ipc.Request, deadline time.Duration) (ipc.Response, error) {
-	resp, err := ipc.SendWithDeadline(ipc.DefaultSocketPath(), req, deadline)
 	if err != nil {
 		return resp, err
 	}

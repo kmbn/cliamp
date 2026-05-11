@@ -12,7 +12,6 @@ import (
 
 	"cliamp/playlist"
 	"cliamp/provider"
-	"cliamp/theme"
 	"cliamp/ui"
 )
 
@@ -153,15 +152,6 @@ func trimTrailingEmpty(sections []string) []string {
 	return sections
 }
 
-func appendFooter(lines, footer []string) []string {
-	if len(footer) == 0 {
-		return lines
-	}
-	lines = append(lines, "")
-	lines = append(lines, footer...)
-	return lines
-}
-
 func (m Model) mainSections(includeTransient bool) []string {
 	sections := []string{
 		// Now playing
@@ -203,10 +193,6 @@ func (m Model) footerMessages() []string {
 	return lines
 }
 
-func (m Model) appendFooterMessages(lines []string) []string {
-	return appendFooter(lines, m.footerMessages())
-}
-
 // centerFrame centers a pre-rendered frame in the terminal using plain string
 // padding instead of allocating a new lipgloss.Style every render.
 func (m Model) centerFrame(frame string) string {
@@ -230,17 +216,6 @@ func (m Model) centerFrame(frame string) string {
 // centerOverlay wraps content in a frame and centers it in the terminal.
 func (m Model) centerOverlay(content string) string {
 	return m.centerFrame(ui.FrameStyle.Render(content))
-}
-
-func (m Model) renderTitle() string {
-	title := titleStyle.Render("C L I A M P")
-	label := m.focus.label()
-	if label == "" {
-		return title
-	}
-	indicator := dimStyle.Render("[" + label + "]")
-	gap := max(ui.PanelWidth-lipgloss.Width(title)-lipgloss.Width(indicator), 1)
-	return title + strings.Repeat(" ", gap) + indicator
 }
 
 func (m Model) renderTrackInfo() string {
@@ -498,25 +473,6 @@ func (m Model) renderProviderPill() string {
 	return srcLabel + strings.Join(pills, " ")
 }
 
-func (m Model) renderPlaylistHeader() string {
-	if m.focus == focusProvider {
-		return dimStyle.Render(fmt.Sprintf("── %s Stations ──", m.provider.Name()))
-	}
-
-	var themeStr string
-	if name := m.ThemeName(); name != theme.DefaultName {
-		themeStr = " " + activeToggle.Render("[Theme: "+name+"]")
-	}
-
-	headerStyle := dimStyle
-	headerLabel := "── Station ── "
-	if m.focus == focusPlaylist {
-		headerStyle = activeToggle
-		headerLabel = "▸─ Station ── "
-	}
-	return headerStyle.Render(headerLabel) + themeStr + " " + dimStyle.Render("──")
-}
-
 func (m Model) renderProviderList(budget int) string {
 	visibleBudget := budget
 	if visibleBudget <= 0 {
@@ -722,55 +678,4 @@ func fitHints(hints []helpHint, maxWidth int) string {
 		}
 	}
 	return sb.String()
-}
-
-// renderBottomStatus renders the bottom status line: speed (left) and
-// network stats (right) on the same row.
-func (m Model) renderBottomStatus() string {
-	// Left: speed indicator.
-	speed := m.player.Speed()
-	if speed == 0 {
-		speed = 1.0
-	}
-	speedVal := fmt.Sprintf("%.2gx", speed)
-
-	var left string
-	speedLabel := labelStyle.Render("SPD ")
-	if speed != 1.0 {
-		left = speedLabel + activeToggle.Render("["+speedVal+"]")
-	} else {
-		left = speedLabel + dimStyle.Render("[") + trackStyle.Render(speedVal) + dimStyle.Render("]")
-	}
-
-	// Right: network stream stats (empty for local files).
-	var right string
-	downloaded, total := m.player.StreamBytes()
-	if downloaded > 0 || total > 0 {
-		mb := float64(downloaded) / (1024 * 1024)
-		if total > 0 {
-			totalMB := float64(total) / (1024 * 1024)
-			pct := float64(downloaded) / float64(total) * 100
-			right = fmt.Sprintf("↓ %.1f / %.1f MB (%.0f%%)", mb, totalMB, pct)
-		} else {
-			right = fmt.Sprintf("↓ %.1f MB", mb)
-		}
-		if m.network.speed > 0 {
-			kbs := m.network.speed / 1024
-			if kbs >= 1024 {
-				right += fmt.Sprintf("  %.1f MB/s", kbs/1024)
-			} else {
-				right += fmt.Sprintf("  %.0f KB/s", kbs)
-			}
-		}
-		right = dimStyle.Render(right)
-	}
-
-	leftW := lipgloss.Width(left)
-	rightW := lipgloss.Width(right)
-	gap := max(1, ui.PanelWidth-leftW-rightW)
-
-	if right == "" {
-		return left
-	}
-	return left + strings.Repeat(" ", gap) + right
 }

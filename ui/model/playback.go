@@ -46,19 +46,6 @@ func (m *Model) prevTrack() tea.Cmd {
 	return m.playTrack(track)
 }
 
-// playCurrentLogicalTrack starts playback from the playlist's active logical
-// track, preserving queued playback state.
-func (m *Model) playCurrentLogicalTrack() tea.Cmd {
-	track, idx := m.playlist.Current()
-	if idx < 0 {
-		return nil
-	}
-	m.titleOff = 0
-	m.plCursor = idx
-	m.adjustScroll()
-	return m.playTrack(track)
-}
-
 // playCurrentTrack starts playing the currently selected track.
 func (m *Model) playCurrentTrack() tea.Cmd {
 	m.titleOff = 0
@@ -69,51 +56,6 @@ func (m *Model) playCurrentTrack() tea.Cmd {
 	m.plCursor = idx
 	m.adjustScroll()
 	return m.playTrack(track)
-}
-
-// playTrackImmediate appends a track to the playlist and starts playing it now,
-// stopping any current playback. Used by search-result "Play now" actions.
-func (m *Model) playTrackImmediate(track playlist.Track) tea.Cmd {
-	m.player.Stop()
-	m.player.ClearPreload()
-	m.playlist.Add(track)
-	idx := m.playlist.Len() - 1
-	m.playlist.SetIndex(idx)
-	m.plCursor = idx
-	m.adjustScroll()
-	m.status.Showf(statusTTLMedium, "Playing: %s", track.DisplayName())
-	cmd := m.playCurrentTrack()
-	m.notifyPlayback()
-	return cmd
-}
-
-// appendTrack appends a track to the playlist; auto-plays if nothing is playing.
-func (m *Model) appendTrack(track playlist.Track) tea.Cmd {
-	wasEmpty := m.playlist.Len() == 0
-	m.playlist.Add(track)
-	idx := m.playlist.Len() - 1
-	m.status.Showf(statusTTLMedium, "Added: %s", track.DisplayName())
-	if wasEmpty || !m.player.IsPlaying() {
-		m.playlist.SetIndex(idx)
-		m.plCursor = idx
-		m.adjustScroll()
-		cmd := m.playCurrentTrack()
-		m.notifyPlayback()
-		return cmd
-	}
-	return nil
-}
-
-// queueTrackNext adds a track to the playlist and starts it if nothing is playing.
-func (m *Model) queueTrackNext(track playlist.Track) tea.Cmd {
-	m.playlist.Add(track)
-	m.status.Showf(statusTTLMedium, "Playing: %s", track.DisplayName())
-	if !m.player.IsPlaying() {
-		cmd := m.nextTrack()
-		m.notifyPlayback()
-		return cmd
-	}
-	return nil
 }
 
 // removeSelectedFromPlaylist is a no-op in radio mode.
